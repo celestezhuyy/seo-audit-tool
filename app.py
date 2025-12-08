@@ -23,14 +23,55 @@ def is_valid_url(url):
     except:
         return False
 
+def check_site_level_assets(start_url):
+    """检查站点级别的 SEO 资产 (Robots.txt, Sitemap)"""
+    issues = []
+    parsed_url = urlparse(start_url)
+    base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
+    
+    # 1. Robots.txt 检查
+    robots_url = urljoin(base_url, "/robots.txt")
+    try:
+        r = requests.head(robots_url, timeout=5)
+        if r.status_code != 200:
+            issues.append({
+                "severity": "Medium",
+                "title": "缺失 Robots.txt",
+                "desc": "无法在根目录找到 robots.txt 文件，可能导致爬取控制混乱。",
+                "suggestion": "在网站根目录创建 robots.txt 文件以指导爬虫。",
+                "url": robots_url,
+                "meta": f"Status: {r.status_code}"
+            })
+    except:
+        pass # 网络错误忽略
+
+    # 2. Sitemap.xml 检查 (简单检查根目录)
+    sitemap_url = urljoin(base_url, "/sitemap.xml")
+    try:
+        r = requests.head(sitemap_url, timeout=5)
+        if r.status_code != 200:
+             # 有些网站Sitemap不在根目录，这里给个低优先级的提示
+            issues.append({
+                "severity": "Low",
+                "title": "根目录未发现 Sitemap.xml",
+                "desc": "根目录无 sitemap.xml。如果您的 Sitemap 位于其他位置，请确保在 robots.txt 中声明。",
+                "suggestion": "确保 Sitemap 可访问并在 robots.txt 中引用。",
+                "url": sitemap_url,
+                "meta": f"Status: {r.status_code}"
+            })
+    except:
+        pass
+
+    return issues
+
 def analyze_page(url, html_content, status_code):
     """分析单个页面的SEO指标，返回数据和问题列表"""
     soup = BeautifulSoup(html_content, 'html.parser')
     issues = []
     
-    # --- 基础内容检查 ---
+    # --- A. 基础内容检查 ---
     
-    # A. 标题分析 (Title)
+    # 1. 标题 (Title)
     title_tag = soup.title
     title = title_tag.string.strip() if title_tag and title_tag.string else None
     
@@ -59,7 +100,7 @@ def analyze_page(url, html_content, status_code):
             "url": url
         })
 
-    # B. 元描述分析 (Meta Description)
+    # 2. 元描述 (Meta Description)
     meta_desc = soup.find('meta', attrs={'name': 'description'})
     desc_content = meta_desc['content'].strip() if meta_desc and meta_desc.get('content') else None
     
@@ -79,19 +120,10 @@ def analyze_page(url, html_content, status_code):
             "suggestion": "建议扩充至 120-160 个字符。",
             "url": url
         })
-    elif len(desc_content) > 160:
-        issues.append({
-            "severity": "Low",
-            "title": "元描述过长",
-            "desc": "描述超过 160 字符，可能会在搜索结果中被截断。",
-            "suggestion": "精简描述内容至 160 字符以内。",
-            "url": url
-        })
 
-    # C. H1 分析
+    # 3. H1 标签
     h1 = soup.find('h1')
     h1_text = h1.get_text().strip() if h1 else "No H1"
-    
     if not h1:
         issues.append({
             "severity": "High",
@@ -101,20 +133,20 @@ def analyze_page(url, html_content, status_code):
             "url": url
         })
 
-    # --- 技术 SEO 检查 ---
+    # --- B. 技术与代码检查 ---
 
-    # D. 移动端视口 (Mobile Viewport)
+    # 4. 移动端视口 (Mobile Viewport)
     viewport = soup.find('meta', attrs={'name': 'viewport'})
     if not viewport:
         issues.append({
             "severity": "Critical",
             "title": "缺失移动端视口配置",
             "desc": "页面未配置 Viewport Meta 标签，Google 可能不会将其视为移动友好页面。",
-            "suggestion": "在 <head> 中添加 <meta name='viewport' content='width=device-width, initial-scale=1'>。",
+            "suggestion": "添加 <meta name='viewport' content='width=device-width, initial-scale=1'>。",
             "url": url
         })
 
-    # E. 规范标签 (Canonical)
+    # 5. 规范标签 (Canonical)
     canonical = soup.find('link', attrs={'rel': 'canonical'})
     if not canonical:
         issues.append({
@@ -125,20 +157,92 @@ def analyze_page(url, html_content, status_code):
             "url": url
         })
 
-    # F. Robots 索引控制
-    robots_meta = soup.find('meta', attrs={'name': 'robots'})
-    if robots_meta and 'noindex' in robots_meta.get('content', '').lower():
-        issues.append({
-            "severity": "High",
-            "title": "页面被禁止索引 (Noindex)",
-            "desc": "检测到 robots meta 标签包含 'noindex'，此页面将不会出现在搜索结果中。",
-            "suggestion": "如果是误操作，请移除 'noindex' 指令；如果是故意为之，请忽略此提示。",
+    # 6. Favicon (网站图标)
+    # 检查 link rel="icon" 或 "shortcut icon"
+    favicon = soup.find('link', rel=lambda x: x and 'icon' in x.lower())
+    if not favicon:
+         issues.append({
+            "severity": "Low",
+            "title": "缺失 Favicon (网站图标)",
+            "desc": "未检测到 Favicon 设置。这会影响在搜索结果页(SERP)中的品牌展示。",
+            "suggestion": "在 <head> 中添加 <link rel='icon' href='...'>。",
             "url": url
         })
 
-    # --- 内容质量检查 ---
+    # 7. 结构化数据 (Structured Data / Schema)
+    # Google 推荐使用 JSON-LD
+    schema = soup.find('script', type='application/ld+json')
+    if not schema:
+         issues.append({
+            "severity": "Medium",
+            "title": "未检测到结构化数据 (JSON-LD)",
+            "desc": "结构化数据有助于 Google 理解内容并生成富媒体搜索结果 (Rich Snippets)。",
+            "suggestion": "添加适合页面的 JSON-LD 结构化数据（如 Organization, Article, Product）。",
+            "url": url
+        })
 
-    # G. 软 404 检测
+    # 8. Hreflang (多语言支持)
+    # 检查是否存在 hreflang 标签
+    hreflang = soup.find('link', hreflang=True)
+    if not hreflang:
+        # 这里给一个低优先级的提示，因为并非所有网站都需要多语言
+        issues.append({
+            "severity": "Low",
+            "title": "未发现 Hreflang 标记",
+            "desc": "如果您针对不同地区/语言的用户提供内容，缺失 hreflang 会导致索引混乱。",
+            "suggestion": "如果网站是多语言的，请添加 <link rel='alternate' hreflang='...' />。",
+            "url": url
+        })
+
+    # --- C. URL 结构与爬取效率 ---
+
+    # 9. URL 结构检查
+    parsed_url = urlparse(url)
+    path = parsed_url.path
+    
+    if '_' in path:
+         issues.append({
+            "severity": "Low",
+            "title": "URL 包含下划线",
+            "desc": "Google 建议在 URL 中使用连字符 (-) 而非下划线 (_) 分隔单词。",
+            "suggestion": "优化 URL 结构，使用连字符代替下划线。",
+            "url": url
+        })
+    
+    if any(c.isupper() for c in path):
+         issues.append({
+            "severity": "Medium",
+            "title": "URL 包含大写字母",
+            "desc": "URL 是区分大小写的。混合大小写容易导致重复内容问题和外部链接错误。",
+            "suggestion": "统一使用全小写字母的 URL。",
+            "url": url
+        })
+    
+    if len(url) > 100:
+         issues.append({
+            "severity": "Low",
+            "title": "URL 过长",
+            "desc": "过长的 URL 不利于用户阅读和分享，也可能被截断。",
+            "suggestion": "保持 URL 简短且具有描述性。",
+            "url": url
+        })
+
+    # 10. JavaScript 链接陷阱
+    # 检查 href="javascript:..."
+    js_links = soup.find_all('a', href=lambda x: x and x.lower().startswith('javascript:'))
+    if js_links:
+        issues.append({
+            "severity": "High",
+            "title": "发现 JavaScript 伪链接",
+            "desc": f"发现 {len(js_links)} 个链接使用 href='javascript:'，爬虫无法跟踪此类链接。",
+            "suggestion": "使用标准的 <a href='URL'> 标签，仅在 onclick 事件中使用 JS。",
+            "url": url,
+            "meta": f"Count: {len(js_links)}"
+        })
+
+    # --- D. 内容质量 ---
+
+    # 11. 软 404 检测
     text_content = soup.get_text().lower()
     if status_code == 200 and ("page not found" in text_content or "404 error" in text_content):
         issues.append({
@@ -149,7 +253,7 @@ def analyze_page(url, html_content, status_code):
             "url": url
         })
         
-    # H. 图片 Alt 属性检测
+    # 12. 图片 Alt 属性
     images = soup.find_all('img')
     missing_alt = 0
     for img in images:
@@ -165,15 +269,14 @@ def analyze_page(url, html_content, status_code):
             "meta": f"该页面有 {missing_alt} 张图片缺失 Alt"
         })
 
-    # I. 提取内部链接 (用于继续爬取)
+    # E. 提取内部链接
     internal_links = set()
     base_domain = urlparse(url).netloc
     for a in soup.find_all('a', href=True):
         link = urljoin(url, a['href'])
         parsed_link = urlparse(link)
-        # 只收集同一域名下的链接
         if parsed_link.netloc == base_domain:
-            # 过滤掉非HTML资源
+            # 过滤非HTML
             if not any(link.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif', '.pdf', '.css', '.js', '.zip']):
                 internal_links.add(link)
 
@@ -193,66 +296,60 @@ def crawl_website(start_url, max_pages=100):
     results_data = []
     all_issues = []
     
-    # 界面上的进度条
     progress_bar = st.progress(0, text="初始化爬虫引擎...")
-    status_text = st.empty()
     
+    # 0. 站点级检查 (执行一次)
+    try:
+        site_issues = check_site_level_assets(start_url)
+        all_issues.extend(site_issues)
+    except Exception as e:
+        st.toast(f"站点级检查失败: {str(e)}")
+
     pages_crawled = 0
     
     while queue and pages_crawled < max_pages:
         url = queue.pop(0)
         
-        # 去重处理
         if url in visited:
             continue
         visited.add(url)
-        
         pages_crawled += 1
         
-        # 更新进度显示
         progress = int((pages_crawled / max_pages) * 100)
         progress_bar.progress(progress, text=f"正在爬取 ({pages_crawled}/{max_pages}): {url}")
         
         try:
-            # 模拟浏览器 User-Agent
-            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
+            headers = {'User-Agent': 'Mozilla/5.0 (compatible; SEOAuditBot/1.0)'}
             response = requests.get(url, headers=headers, timeout=10)
             
-            # 确保是 HTML 页面
             content_type = response.headers.get('Content-Type', '').lower()
             if 'text/html' in content_type:
                 page_data, page_issues, new_links = analyze_page(url, response.content, response.status_code)
-                
                 results_data.append(page_data)
                 all_issues.extend(page_issues)
                 
-                # 将新发现的链接加入队列
                 for link in new_links:
                     if link not in visited and link not in queue:
                         queue.append(link)
-            else:
-                pass # 忽略非 HTML 文件
-
         except Exception as e:
-            # 记录错误但不中断程序
-            st.toast(f"无法访问 {url}: {str(e)}")
+            pass # 忽略单个页面错误
     
-    progress_bar.progress(100, text="分析完成！正在生成报告...")
+    progress_bar.progress(100, text="分析完成！")
     time.sleep(0.5)
     progress_bar.empty()
     
     return results_data, all_issues
 
-# --- 3. 初始化 Session State (缓存数据) ---
+# --- 3. 初始化 Session State ---
 if 'audit_data' not in st.session_state:
     st.session_state['audit_data'] = None
 if 'audit_issues' not in st.session_state:
     st.session_state['audit_issues'] = []
 
-# --- 4. 侧边栏导航 ---
+# --- 4. 侧边栏 ---
 with st.sidebar:
     st.title("🔍 AuditAI Pro")
-    st.caption("Live Crawler Edition")
+    st.caption("Live Crawler Edition v2.0")
     
     menu = st.radio(
         "功能导航",
@@ -271,55 +368,48 @@ with st.sidebar:
 
 if menu == "输入网址":
     st.header("开始新的审计")
-    st.info("说明: 这是一个真实爬虫。输入网址后，系统将实时访问该网站并分析前 100 个页面。")
+    st.info("说明: 升级版爬虫，支持 Robots.txt、Sitemap、结构化数据及 URL 规范检查。")
     
     col1, col2 = st.columns([3, 1])
     with col1:
-        url_input = st.text_input("输入目标网址 (例如 https://example.com)", placeholder="https://...")
+        url_input = st.text_input("输入目标网址", placeholder="https://example.com")
     with col2:
         start_btn = st.button("开始真实爬取", type="primary", use_container_width=True)
     
     if start_btn and url_input:
         if not is_valid_url(url_input):
-            st.error("网址格式错误，请确保包含 http:// 或 https://")
+            st.error("网址格式错误")
         else:
-            with st.spinner("正在启动爬虫，爬取 100 个页面可能需要 1-2 分钟，请耐心等待..."):
-                # 这里修改为 100 页
+            with st.spinner("正在启动爬虫 (Max 100 pages)..."):
                 data, issues = crawl_website(url_input, max_pages=100)
-                
                 if not data:
-                    st.error("未能爬取到任何页面，请检查网址是否可访问，或网站是否有反爬虫机制。")
+                    st.error("未能爬取到任何页面。")
                 else:
-                    # 存入 Session State
                     st.session_state['audit_data'] = data
                     st.session_state['audit_issues'] = issues
-                    st.success(f"审计完成！共分析 {len(data)} 个页面，发现 {len(issues)} 个问题。")
+                    st.success(f"审计完成！共分析 {len(data)} 个页面。")
                     st.balloons()
 
 elif menu == "仪表盘":
     st.header("执行摘要 (Executive Summary)")
-    
     if st.session_state['audit_data'] is None:
-        st.warning("暂无数据，请先前往'输入网址'页面进行爬取。")
+        st.warning("暂无数据。")
     else:
         df = pd.DataFrame(st.session_state['audit_data'])
         issues = st.session_state['audit_issues']
         
-        # 计算健康度 (模拟算法)
         total_issues = len(issues)
-        health_score = max(0, 100 - int(total_issues * 0.5)) # 降低扣分权重因为页面多了
+        health_score = max(0, 100 - int(total_issues * 0.5))
         
         kpi1, kpi2, kpi3, kpi4 = st.columns(4)
         kpi1.metric("网站健康度", f"{health_score}/100")
         kpi2.metric("已分析页面", str(len(df)))
         kpi3.metric("发现问题总数", str(total_issues), delta_color="inverse")
-        
         critical_count = len([i for i in issues if i['severity'] == 'Critical'])
-        kpi4.metric("严重问题 (Critical)", str(critical_count), delta_color="inverse")
+        kpi4.metric("严重问题", str(critical_count), delta_color="inverse")
         
         st.divider()
         col1, col2 = st.columns(2)
-        
         with col1:
             st.subheader("问题类型分布")
             if issues:
@@ -327,7 +417,6 @@ elif menu == "仪表盘":
                 st.bar_chart(issue_types)
             else:
                 st.info("未发现明显问题。")
-                
         with col2:
             st.subheader("HTTP 状态码分布")
             if not df.empty:
@@ -336,12 +425,10 @@ elif menu == "仪表盘":
 
 elif menu == "数据矩阵":
     st.header("全站数据明细 (Big Sheet)")
-    
     if st.session_state['audit_data'] is None:
-        st.warning("暂无数据，请先爬取。")
+        st.warning("暂无数据。")
     else:
         df = pd.DataFrame(st.session_state['audit_data'])
-        
         st.dataframe(
             df,
             column_config={
@@ -351,98 +438,61 @@ elif menu == "数据矩阵":
             use_container_width=True,
             hide_index=True
         )
-        
         csv = df.to_csv(index=False).encode('utf-8')
         st.download_button("下载 CSV 报告", csv, "audit_report.csv", "text/csv")
 
 elif menu == "PPT 生成器":
     st.header("演示文稿预览 (Pitch Deck Mode)")
-    
     if st.session_state['audit_data'] is None:
-        st.warning("暂无数据，无法生成 PPT。")
+        st.warning("暂无数据。")
     elif not st.session_state['audit_issues']:
-        st.success("恭喜！未发现严重问题，无需生成修复建议 PPT。")
+        st.success("无严重问题。")
     else:
-        # --- 聚合逻辑开始 ---
+        # 聚合逻辑
         raw_issues = st.session_state['audit_issues']
         grouped_issues = {}
-        
         for issue in raw_issues:
             title = issue['title']
             if title not in grouped_issues:
-                # 初始化该类问题
                 grouped_issues[title] = {
-                    "title": title,
-                    "severity": issue['severity'],
-                    "desc": issue['desc'],
-                    "suggestion": issue['suggestion'],
-                    "count": 0,
-                    "examples": [], # 存储受影响的URL
-                    "meta": issue.get('meta', '') # 额外信息
+                    "title": title, "severity": issue['severity'],
+                    "desc": issue['desc'], "suggestion": issue['suggestion'],
+                    "count": 0, "examples": [], "meta": issue.get('meta', '')
                 }
-            
             grouped_issues[title]['count'] += 1
-            if len(grouped_issues[title]['examples']) < 3: # 只存前3个例子
+            if len(grouped_issues[title]['examples']) < 3:
                 grouped_issues[title]['examples'].append(issue['url'])
         
-        # 将字典转换为列表，并按严重程度排序 (Critical > High > Medium)
         severity_order = {"Critical": 0, "High": 1, "Medium": 2, "Low": 3}
-        ppt_slides = sorted(
-            list(grouped_issues.values()), 
-            key=lambda x: (severity_order.get(x['severity'], 3), -x['count'])
-        )
-        # --- 聚合逻辑结束 ---
+        ppt_slides = sorted(list(grouped_issues.values()), key=lambda x: (severity_order.get(x['severity'], 3), -x['count']))
 
-        st.caption(f"系统已自动聚合相同类型的问题，共生成 {len(ppt_slides)} 张关键幻灯片。")
-        
-        if 'slide_index' not in st.session_state:
-            st.session_state.slide_index = 0
-            
-        # 防止索引越界
-        if st.session_state.slide_index >= len(ppt_slides):
-            st.session_state.slide_index = 0
+        if 'slide_index' not in st.session_state: st.session_state.slide_index = 0
+        if st.session_state.slide_index >= len(ppt_slides): st.session_state.slide_index = 0
             
         slide = ppt_slides[st.session_state.slide_index]
         
-        # 模拟 PPT 框架 (16:9)
         with st.container(border=True):
-            # 标题区域展示统计数据
             st.markdown(f"### 问题类型: {slide['title']}")
-            
             c1, c2 = st.columns([1, 1])
             with c1:
                 color = "red" if slide['severity'] == "Critical" else "orange" if slide['severity'] == "High" else "blue"
                 st.markdown(f"**严重程度:** :{color}[{slide['severity']}]")
-                st.markdown(f"**影响范围:** 全站共发现 **{slide['count']}** 个页面存在此问题。")
-                
-                st.markdown("**问题描述:**")
-                st.write(slide['desc'])
-                
-                st.info(f"💡 **修复建议:** {slide['suggestion']}")
-            
+                st.markdown(f"**影响范围:** 全站共 **{slide['count']}** 个页面。")
+                st.markdown(f"**描述:** {slide['desc']}")
+                st.info(f"💡 **建议:** {slide['suggestion']}")
             with c2:
-                # 展示示例 URL 列表
-                st.markdown("**🔍 受影响页面示例:**")
-                for ex_url in slide['examples']:
-                    st.markdown(f"- `{ex_url}`")
-                if slide['count'] > 3:
-                    st.caption(f"...以及其他 {slide['count'] - 3} 个页面。")
-                    
-                st.markdown("---")
-                # 截图占位符
-                st.image("https://placehold.co/600x300/EEE/31343C?text=Screenshot+Example", caption="请截取上述示例页面之一作为证据")
+                st.markdown("**🔍 示例:**")
+                for ex in slide['examples']: st.markdown(f"- `{ex}`")
+                st.image("https://placehold.co/600x300/EEE/31343C?text=Screenshot+Evidence", caption="示例截图")
 
-        # 翻页按钮
-        col_prev, col_info, col_next = st.columns([1, 2, 1])
-        with col_prev:
+        c_prev, c_txt, c_next = st.columns([1, 2, 1])
+        with c_prev:
             if st.button("⬅️ 上一页"):
-                if st.session_state.slide_index > 0:
-                    st.session_state.slide_index -= 1
-                    st.rerun()
-        with col_info:
+                st.session_state.slide_index = max(0, st.session_state.slide_index - 1)
+                st.rerun()
+        with c_txt:
             st.markdown(f"<div style='text-align: center'>Slide {st.session_state.slide_index + 1} / {len(ppt_slides)}</div>", unsafe_allow_html=True)
-        with col_next:
+        with c_next:
             if st.button("下一页 ➡️"):
-                if st.session_state.slide_index < len(ppt_slides) - 1:
-                    st.session_state.slide_index += 1
-                    st.rerun()
+                st.session_state.slide_index = min(len(ppt_slides) - 1, st.session_state.slide_index + 1)
+                st.rerun()
