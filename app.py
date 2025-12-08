@@ -514,11 +514,12 @@ def create_styled_pptx(slides_data, lang="zh"):
     
     txt = TRANSLATIONS[lang] # 使用全局翻译字典
     
-    def set_font(run, size, bold=False, color=None):
-        run.font.size = Pt(size)
-        run.font.name = 'Microsoft YaHei' if lang == "zh" else 'Arial'
-        run.font.bold = bold
-        if color: run.font.color.rgb = color
+    # 修复：直接操作 font_obj，不再访问 .font 属性
+    def set_font(font_obj, size, bold=False, color=None):
+        font_obj.size = Pt(size)
+        font_obj.name = 'Microsoft YaHei' if lang == "zh" else 'Arial'
+        font_obj.bold = bold
+        if color: font_obj.color.rgb = color
 
     # --- Cover ---
     slide = prs.slides.add_slide(prs.slide_layouts[6])
