@@ -29,7 +29,7 @@ st.set_page_config(
 TRANSLATIONS = {
     "zh": {
         "sidebar_title": "🔍 AuditAI Pro",
-        "sidebar_caption": "实时爬虫版 v2.6",
+        "sidebar_caption": "实时爬虫版 v2.7",
         "nav_label": "功能导航",
         "nav_options": ["输入网址", "仪表盘", "数据矩阵", "PPT 生成器"],
         "lang_label": "语言 / Language",
@@ -44,7 +44,10 @@ TRANSLATIONS = {
         "input_info": "说明: 增强版 Sitemap/Robots 检测（支持重定向），支持 Sitemap Hreflang 验证。",
         "input_label": "输入目标网址",
         "input_placeholder": "https://example.com",
-        "max_pages_label": "最大爬取页面数", 
+        "max_pages_label": "最大爬取页面数",
+        "adv_settings": "高级设置 (Advanced Settings)", # New
+        "manual_robots": "手动 Robots.txt 地址 (可选)", # New
+        "manual_sitemaps": "手动 Sitemap 地址 (每行一个, 可选)", # New
         "start_btn": "开始真实爬取",
         "error_url": "网址格式错误",
         "spinner_crawl": "正在启动爬虫 (Max {} pages)...", 
@@ -90,7 +93,7 @@ TRANSLATIONS = {
     },
     "en": {
         "sidebar_title": "🔍 AuditAI Pro",
-        "sidebar_caption": "Live Crawler Edition v2.6",
+        "sidebar_caption": "Live Crawler Edition v2.7",
         "nav_label": "Navigation",
         "nav_options": ["Input URL", "Dashboard", "Data Matrix", "PPT Generator"],
         "lang_label": "Language / 语言",
@@ -105,7 +108,10 @@ TRANSLATIONS = {
         "input_info": "Note: Robust Sitemap/Robots detection (Redirects supported) & Sitemap Hreflang check.",
         "input_label": "Target URL",
         "input_placeholder": "https://example.com",
-        "max_pages_label": "Max Pages to Crawl", 
+        "max_pages_label": "Max Pages to Crawl",
+        "adv_settings": "Advanced Settings", # New
+        "manual_robots": "Manual Robots.txt URL (Optional)", # New
+        "manual_sitemaps": "Manual Sitemap URLs (One per line, Optional)", # New
         "start_btn": "Start Live Crawl",
         "error_url": "Invalid URL format",
         "spinner_crawl": "Starting Crawler (Max {} pages)...", 
@@ -172,10 +178,10 @@ def get_browser_headers():
         'Connection': 'keep-alive',
     }
 
-def check_site_level_assets(start_url, lang="zh"):
+def check_site_level_assets(start_url, lang="zh", manual_robots=None, manual_sitemaps=None):
     """
     检查站点级别的 SEO 资产。
-    改进点：使用 GET + allow_redirects 处理 301/302，并检查 Sitemap 内容中的 Hreflang。
+    支持手动指定的 Robots.txt 和 Sitemap (列表)。
     """
     issues = []
     sitemap_has_hreflang = False
@@ -188,22 +194,22 @@ def check_site_level_assets(start_url, lang="zh"):
     txt = {
         "zh": {
             "no_robots": "缺失 Robots.txt",
-            "no_robots_desc": "无法在根目录找到 robots.txt 文件，或服务器拒绝访问 (403/404)。",
-            "no_robots_sugg": "在网站根目录创建 robots.txt 文件并确保可访问。",
-            "no_sitemap": "根目录未发现 Sitemap.xml",
-            "no_sitemap_desc": "根目录无 sitemap.xml，会降低搜索引擎发现新页面和更新页面的效率。",
-            "no_sitemap_sugg": "确保 Sitemap 可访问并在 robots.txt 中引用。",
+            "no_robots_desc": "无法访问 robots.txt 文件 (自动检测或手动指定)。",
+            "no_robots_sugg": "确保 robots.txt 文件存在且可公开访问。",
+            "no_sitemap": "Sitemap 访问失败",
+            "no_sitemap_desc": "无法访问 Sitemap (自动检测或手动指定)。",
+            "no_sitemap_sugg": "确保 Sitemap URL 正确且服务器允许爬虫访问。",
             "no_favicon": "站点缺失 Favicon",
             "no_favicon_desc": "未在首页检测到 Favicon，降低品牌辨识度，直接影响搜索结果页 (SERP) 的用户点击率。",
             "no_favicon_sugg": "配置全局 Favicon 以提升 SERP 品牌辨识度。"
         },
         "en": {
             "no_robots": "Missing Robots.txt",
-            "no_robots_desc": "Robots.txt file not found in root directory, or access denied (403/404).",
-            "no_robots_sugg": "Create robots.txt in root directory and ensure it is accessible.",
-            "no_sitemap": "Sitemap.xml Not Found",
-            "no_sitemap_desc": "Sitemap.xml not found in root directory.",
-            "no_sitemap_sugg": "Ensure Sitemap is accessible and linked in robots.txt.",
+            "no_robots_desc": "Cannot access robots.txt (Auto-detected or Manually specified).",
+            "no_robots_sugg": "Ensure robots.txt exists and is publicly accessible.",
+            "no_sitemap": "Sitemap Access Failed",
+            "no_sitemap_desc": "Cannot access Sitemap (Auto-detected or Manually specified).",
+            "no_sitemap_sugg": "Ensure Sitemap URL is correct and server allows access.",
             "no_favicon": "Site Missing Favicon",
             "no_favicon_desc": "No Favicon found. This reduces brand visibility and negatively impacts Click-Through Rate (CTR) in SERPs.",
             "no_favicon_sugg": "Configure a global Favicon for brand visibility."
@@ -211,33 +217,47 @@ def check_site_level_assets(start_url, lang="zh"):
     }
     t = txt[lang]
 
-    # 1. Robots.txt (使用 GET 替代 HEAD，更稳定)
-    robots_url = urljoin(base_url, "/robots.txt")
+    # 1. Robots.txt
+    robots_url = manual_robots if manual_robots else urljoin(base_url, "/robots.txt")
     try:
         r = requests.get(robots_url, headers=headers, timeout=10, allow_redirects=True, stream=True)
-        # 只要最终状态码是 200，就算存在（即使经过了重定向）
         if r.status_code != 200:
-            issues.append({"severity": "Medium", "title": t["no_robots"], "desc": t["no_robots_desc"], "suggestion": t["no_robots_sugg"], "url": robots_url})
+            issues.append({"severity": "Medium", "title": t["no_robots"], "desc": f"{t['no_robots_desc']} ({robots_url})", "suggestion": t["no_robots_sugg"], "url": robots_url})
         r.close()
     except: 
-        # 网络错误也算缺失
-        issues.append({"severity": "Medium", "title": t["no_robots"], "desc": t["no_robots_desc"], "suggestion": t["no_robots_sugg"], "url": robots_url})
+        issues.append({"severity": "Medium", "title": t["no_robots"], "desc": f"{t['no_robots_desc']} ({robots_url})", "suggestion": t["no_robots_sugg"], "url": robots_url})
 
-    # 2. Sitemap.xml Check & Parse
-    sitemap_url = urljoin(base_url, "/sitemap.xml")
-    try:
-        # 同样使用 GET + allow_redirects
-        r = requests.get(sitemap_url, headers=headers, timeout=15, allow_redirects=True)
-        if r.status_code == 200:
-            # 扫描 Sitemap 内容检查是否配置了 hreflang
-            # 检查关键词：'hreflang' 或 'xhtml:link'
-            content_sample = r.text[:500000].lower() # 只读前 500KB 防止内存溢出
-            if 'hreflang' in content_sample or 'xhtml:link' in content_sample:
-                sitemap_has_hreflang = True
-        else:
-            issues.append({"severity": "Low", "title": t["no_sitemap"], "desc": t["no_sitemap_desc"], "suggestion": t["no_sitemap_sugg"], "url": sitemap_url})
-    except:
-        issues.append({"severity": "Low", "title": t["no_sitemap"], "desc": t["no_sitemap_desc"], "suggestion": t["no_sitemap_sugg"], "url": sitemap_url})
+    # 2. Sitemap.xml Check & Parse (Multi-support)
+    # 如果有手动输入，则只检查手动输入的；否则检查默认位置
+    sitemap_urls_to_check = manual_sitemaps if manual_sitemaps else [urljoin(base_url, "/sitemap.xml")]
+    
+    # 只要有一个 Sitemap 访问成功就算成功
+    any_sitemap_accessible = False
+    
+    for sitemap_url in sitemap_urls_to_check:
+        sitemap_url = sitemap_url.strip()
+        if not sitemap_url: continue
+        
+        try:
+            r = requests.get(sitemap_url, headers=headers, timeout=15, allow_redirects=True)
+            if r.status_code == 200:
+                any_sitemap_accessible = True
+                # 扫描内容
+                content_sample = r.text[:500000].lower()
+                if 'hreflang' in content_sample or 'xhtml:link' in content_sample:
+                    sitemap_has_hreflang = True # 只要任意一个 sitemap 有 hreflang 就算有
+            else:
+                # 只有当是手动指定且失败时，才特别提示该特定 URL 失败
+                if manual_sitemaps:
+                    issues.append({"severity": "Low", "title": t["no_sitemap"], "desc": f"{t['no_sitemap_desc']} ({sitemap_url})", "suggestion": t["no_sitemap_sugg"], "url": sitemap_url})
+        except:
+            if manual_sitemaps:
+                issues.append({"severity": "Low", "title": t["no_sitemap"], "desc": f"{t['no_sitemap_desc']} ({sitemap_url})", "suggestion": t["no_sitemap_sugg"], "url": sitemap_url})
+
+    # 如果所有尝试都失败了（且不是手动模式下已经报错了），则报一个通用错误
+    if not any_sitemap_accessible and not manual_sitemaps:
+         default_sitemap = sitemap_urls_to_check[0]
+         issues.append({"severity": "Low", "title": t["no_sitemap"], "desc": t["no_sitemap_desc"], "suggestion": t["no_sitemap_sugg"], "url": default_sitemap})
 
     # 3. Favicon (Site Level Check)
     has_favicon = False
@@ -498,7 +518,7 @@ def analyze_page(url, html_content, status_code, lang="zh", sitemap_has_hreflang
         "Canonical": canonical_url # Add Canonical to return data
     }, issues, internal_links
 
-def crawl_website(start_url, max_pages=100, lang="zh"):
+def crawl_website(start_url, max_pages=100, lang="zh", manual_robots=None, manual_sitemaps=None):
     """执行爬取，传递语言参数"""
     visited = set()
     seen_hashes = {} # Format: {hash: url}
@@ -516,7 +536,9 @@ def crawl_website(start_url, max_pages=100, lang="zh"):
     
     try:
         # 执行站点级检查，并获取 Sitemap Hreflang 状态
-        site_issues, sitemap_has_hreflang = check_site_level_assets(start_url, lang=lang)
+        site_issues, sitemap_has_hreflang = check_site_level_assets(
+            start_url, lang=lang, manual_robots=manual_robots, manual_sitemaps=manual_sitemaps
+        )
         all_issues.extend(site_issues)
         
         # 保存到 Session State 供 Sidebar 显示
@@ -764,6 +786,13 @@ if menu_key == "input":
     with col2:
         max_pages = st.number_input(ui.get("max_pages_label", "Max Pages / 最大页面数"), min_value=1, max_value=1000, value=100)
     
+    # Advanced Settings Expander
+    with st.expander(ui["adv_settings"]):
+        manual_robots = st.text_input(ui["manual_robots"], placeholder="https://example.com/robots.txt")
+        manual_sitemaps_text = st.text_area(ui["manual_sitemaps"], placeholder="https://example.com/sitemap.xml\nhttps://example.com/sitemap_index.xml")
+        
+        manual_sitemaps = [s.strip() for s in manual_sitemaps_text.split('\n') if s.strip()]
+        
     start_btn = st.button(ui["start_btn"], type="primary", use_container_width=True)
     
     if start_btn and url_input:
@@ -771,8 +800,14 @@ if menu_key == "input":
             st.error(ui["error_url"])
         else:
             with st.spinner(ui["spinner_crawl"].format(max_pages)):
-                # 传递当前语言 lang 和 max_pages
-                data, issues = crawl_website(url_input, max_pages=max_pages, lang=lang)
+                # 传递当前语言 lang, max_pages 和 手动配置
+                data, issues = crawl_website(
+                    url_input, 
+                    max_pages=max_pages, 
+                    lang=lang,
+                    manual_robots=manual_robots,
+                    manual_sitemaps=manual_sitemaps
+                )
                 if not data:
                     st.error(ui["error_no_data"])
                 else:
