@@ -28,7 +28,9 @@ def analyze_page(url, html_content, status_code):
     soup = BeautifulSoup(html_content, 'html.parser')
     issues = []
     
-    # A. 标题分析
+    # --- 基础内容检查 ---
+    
+    # A. 标题分析 (Title)
     title_tag = soup.title
     title = title_tag.string.strip() if title_tag and title_tag.string else None
     
@@ -48,8 +50,45 @@ def analyze_page(url, html_content, status_code):
             "suggestion": "建议将标题扩充至 30-60 个字符。",
             "url": url
         })
+    elif len(title) > 60:
+         issues.append({
+            "severity": "Low",
+            "title": "标题过长",
+            "desc": f"标题长达 {len(title)} 字符，在搜索结果中可能会被截断。",
+            "suggestion": "建议将标题控制在 60 个字符以内。",
+            "url": url
+        })
 
-    # B. H1 分析
+    # B. 元描述分析 (Meta Description)
+    meta_desc = soup.find('meta', attrs={'name': 'description'})
+    desc_content = meta_desc['content'].strip() if meta_desc and meta_desc.get('content') else None
+    
+    if not desc_content:
+        issues.append({
+            "severity": "High",
+            "title": "缺失元描述 (Meta Description)",
+            "desc": "缺失元描述会降低搜索结果的点击率 (CTR)。",
+            "suggestion": "添加 <meta name='description'> 标签，概括页面内容。",
+            "url": url
+        })
+    elif len(desc_content) < 50:
+        issues.append({
+            "severity": "Low",
+            "title": "元描述过短",
+            "desc": "描述内容太少，无法有效吸引用户点击。",
+            "suggestion": "建议扩充至 120-160 个字符。",
+            "url": url
+        })
+    elif len(desc_content) > 160:
+        issues.append({
+            "severity": "Low",
+            "title": "元描述过长",
+            "desc": "描述超过 160 字符，可能会在搜索结果中被截断。",
+            "suggestion": "精简描述内容至 160 字符以内。",
+            "url": url
+        })
+
+    # C. H1 分析
     h1 = soup.find('h1')
     h1_text = h1.get_text().strip() if h1 else "No H1"
     
@@ -62,7 +101,44 @@ def analyze_page(url, html_content, status_code):
             "url": url
         })
 
-    # C. 软 404 检测 (简单的关键词匹配)
+    # --- 技术 SEO 检查 ---
+
+    # D. 移动端视口 (Mobile Viewport)
+    viewport = soup.find('meta', attrs={'name': 'viewport'})
+    if not viewport:
+        issues.append({
+            "severity": "Critical",
+            "title": "缺失移动端视口配置",
+            "desc": "页面未配置 Viewport Meta 标签，Google 可能不会将其视为移动友好页面。",
+            "suggestion": "在 <head> 中添加 <meta name='viewport' content='width=device-width, initial-scale=1'>。",
+            "url": url
+        })
+
+    # E. 规范标签 (Canonical)
+    canonical = soup.find('link', attrs={'rel': 'canonical'})
+    if not canonical:
+        issues.append({
+            "severity": "Medium",
+            "title": "缺失规范标签 (Canonical)",
+            "desc": "未指定规范链接，可能导致参数不同的同一页面被视为重复内容。",
+            "suggestion": "添加 <link rel='canonical' href='...' /> 指向当前页面的标准 URL。",
+            "url": url
+        })
+
+    # F. Robots 索引控制
+    robots_meta = soup.find('meta', attrs={'name': 'robots'})
+    if robots_meta and 'noindex' in robots_meta.get('content', '').lower():
+        issues.append({
+            "severity": "High",
+            "title": "页面被禁止索引 (Noindex)",
+            "desc": "检测到 robots meta 标签包含 'noindex'，此页面将不会出现在搜索结果中。",
+            "suggestion": "如果是误操作，请移除 'noindex' 指令；如果是故意为之，请忽略此提示。",
+            "url": url
+        })
+
+    # --- 内容质量检查 ---
+
+    # G. 软 404 检测
     text_content = soup.get_text().lower()
     if status_code == 200 and ("page not found" in text_content or "404 error" in text_content):
         issues.append({
@@ -73,7 +149,7 @@ def analyze_page(url, html_content, status_code):
             "url": url
         })
         
-    # D. 图片 Alt 属性检测
+    # H. 图片 Alt 属性检测
     images = soup.find_all('img')
     missing_alt = 0
     for img in images:
@@ -82,23 +158,23 @@ def analyze_page(url, html_content, status_code):
     if missing_alt > 0:
         issues.append({
             "severity": "Medium",
-            "title": "图片缺失 Alt 属性", # 统一 Title 以便聚合
+            "title": "图片缺失 Alt 属性",
             "desc": "图片缺少替代文本，影响图片搜索排名和无障碍访问。",
             "suggestion": "为所有 img 标签添加描述性的 alt 属性。",
             "url": url,
-            "meta": f"该页面有 {missing_alt} 张图片缺失 Alt" # 额外信息
+            "meta": f"该页面有 {missing_alt} 张图片缺失 Alt"
         })
 
-    # E. 提取内部链接 (用于继续爬取)
+    # I. 提取内部链接 (用于继续爬取)
     internal_links = set()
     base_domain = urlparse(url).netloc
     for a in soup.find_all('a', href=True):
         link = urljoin(url, a['href'])
         parsed_link = urlparse(link)
-        # 只收集同一域名下的链接，防止爬出去
+        # 只收集同一域名下的链接
         if parsed_link.netloc == base_domain:
-            # 过滤掉图片、PDF等非HTML链接
-            if not any(link.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif', '.pdf', '.css', '.js']):
+            # 过滤掉非HTML资源
+            if not any(link.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif', '.pdf', '.css', '.js', '.zip']):
                 internal_links.add(link)
 
     return {
@@ -310,7 +386,7 @@ elif menu == "PPT 生成器":
                 grouped_issues[title]['examples'].append(issue['url'])
         
         # 将字典转换为列表，并按严重程度排序 (Critical > High > Medium)
-        severity_order = {"Critical": 0, "High": 1, "Medium": 2}
+        severity_order = {"Critical": 0, "High": 1, "Medium": 2, "Low": 3}
         ppt_slides = sorted(
             list(grouped_issues.values()), 
             key=lambda x: (severity_order.get(x['severity'], 3), -x['count'])
