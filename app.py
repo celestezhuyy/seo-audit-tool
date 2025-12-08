@@ -12,7 +12,7 @@ try:
     from pptx import Presentation
     from pptx.util import Inches, Pt, Cm
     from pptx.dml.color import RGBColor
-    from pptx.enum.text import PP_ALIGN
+    from pptx.enum.text import PP_ALIGN, MSO_AUTO_SIZE
 except ImportError:
     st.error("Missing dependencies! Please add 'python-pptx' to requirements.txt.")
     st.stop()
@@ -29,7 +29,7 @@ st.set_page_config(
 TRANSLATIONS = {
     "zh": {
         "sidebar_title": "🔍 AuditAI Pro",
-        "sidebar_caption": "实时爬虫版 v2.3",
+        "sidebar_caption": "实时爬虫版 v2.4",
         "nav_label": "功能导航",
         "nav_options": ["输入网址", "仪表盘", "数据矩阵", "PPT 生成器"],
         "lang_label": "语言 / Language",
@@ -40,9 +40,10 @@ TRANSLATIONS = {
         "input_info": "说明: 包含重复内容检测、软404增强检测及美化版 PPT 导出功能。",
         "input_label": "输入目标网址",
         "input_placeholder": "https://example.com",
+        "max_pages_label": "最大爬取页面数", # 新增
         "start_btn": "开始真实爬取",
         "error_url": "网址格式错误",
-        "spinner_crawl": "正在启动爬虫 (Max 100 pages)...",
+        "spinner_crawl": "正在启动爬虫 (Max {} pages)...", # 修改为动态占位符
         "error_no_data": "未能爬取到任何页面。",
         "success_audit": "审计完成！共分析 {} 个页面。",
         
@@ -85,7 +86,7 @@ TRANSLATIONS = {
     },
     "en": {
         "sidebar_title": "🔍 AuditAI Pro",
-        "sidebar_caption": "Live Crawler Edition v2.3",
+        "sidebar_caption": "Live Crawler Edition v2.4",
         "nav_label": "Navigation",
         "nav_options": ["Input URL", "Dashboard", "Data Matrix", "PPT Generator"],
         "lang_label": "Language / 语言",
@@ -96,9 +97,10 @@ TRANSLATIONS = {
         "input_info": "Note: Includes Duplicate Content detection, Soft 404s, and Styled PPT Export.",
         "input_label": "Target URL",
         "input_placeholder": "https://example.com",
+        "max_pages_label": "Max Pages to Crawl", # New
         "start_btn": "Start Live Crawl",
         "error_url": "Invalid URL format",
-        "spinner_crawl": "Starting Crawler (Max 100 pages)...",
+        "spinner_crawl": "Starting Crawler (Max {} pages)...", # Dynamic
         "error_no_data": "No pages crawled.",
         "success_audit": "Audit Complete! Analyzed {} pages.",
         
@@ -572,6 +574,7 @@ def create_styled_pptx(slides_data, lang="zh"):
         desc_box = slide.shapes.add_textbox(Inches(0.5), Inches(2.0), Inches(6), Inches(2.5))
         tf = desc_box.text_frame
         tf.word_wrap = True
+        tf.auto_size = MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE # Add this
         p = tf.add_paragraph()
         p.text = issue['desc']
         set_font(p.font, 14, False, RGBColor(80, 80, 80))
@@ -589,6 +592,8 @@ def create_styled_pptx(slides_data, lang="zh"):
         
         ex_box = slide.shapes.add_textbox(Inches(7), Inches(2.0), Inches(5.8), Inches(2.5))
         tf = ex_box.text_frame
+        tf.word_wrap = True
+        tf.auto_size = MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE # Add this
         for ex_url in issue['examples'][:5]:
             p = tf.add_paragraph()
             p.text = f"• {ex_url}"
@@ -604,6 +609,7 @@ def create_styled_pptx(slides_data, lang="zh"):
         sugg_box = slide.shapes.add_textbox(Inches(0.7), Inches(5.6), Inches(11.9), Inches(1.3))
         tf = sugg_box.text_frame
         tf.word_wrap = True
+        tf.auto_size = MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE # Add this
         
         p = tf.add_paragraph()
         p.text = txt["ppt_slide_sugg_title"]
@@ -669,15 +675,17 @@ if menu_key == "input":
     with col1:
         url_input = st.text_input(ui["input_label"], placeholder=ui["input_placeholder"])
     with col2:
-        start_btn = st.button(ui["start_btn"], type="primary", use_container_width=True)
+        max_pages = st.number_input(ui.get("max_pages_label", "Max Pages / 最大页面数"), min_value=1, max_value=1000, value=100)
+    
+    start_btn = st.button(ui["start_btn"], type="primary", use_container_width=True)
     
     if start_btn and url_input:
         if not is_valid_url(url_input):
             st.error(ui["error_url"])
         else:
-            with st.spinner(ui["spinner_crawl"]):
-                # 传递当前语言 lang
-                data, issues = crawl_website(url_input, max_pages=100, lang=lang)
+            with st.spinner(ui["spinner_crawl"].format(max_pages)):
+                # 传递当前语言 lang 和 max_pages
+                data, issues = crawl_website(url_input, max_pages=max_pages, lang=lang)
                 if not data:
                     st.error(ui["error_no_data"])
                 else:
