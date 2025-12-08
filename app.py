@@ -29,15 +29,19 @@ st.set_page_config(
 TRANSLATIONS = {
     "zh": {
         "sidebar_title": "🔍 AuditAI Pro",
-        "sidebar_caption": "实时爬虫版 v2.5",
+        "sidebar_caption": "实时爬虫版 v2.6",
         "nav_label": "功能导航",
         "nav_options": ["输入网址", "仪表盘", "数据矩阵", "PPT 生成器"],
         "lang_label": "语言 / Language",
         "clear_data": "清除数据并重置",
         "cache_info": "已缓存 {} 个页面",
+        "sitemap_status_title": "Sitemap 扫描状态:",
+        "sitemap_found_href": "✅ 发现 Hreflang 配置",
+        "sitemap_no_href": "⚠️ 未发现 Hreflang",
+        "sitemap_missing": "❌ 未找到 Sitemap",
         
         "input_header": "开始新的审计",
-        "input_info": "说明: 升级版去重逻辑（支持 Canonical 识别），智能 Schema 建议。",
+        "input_info": "说明: 增强版 Sitemap/Robots 检测（支持重定向），支持 Sitemap Hreflang 验证。",
         "input_label": "输入目标网址",
         "input_placeholder": "https://example.com",
         "max_pages_label": "最大爬取页面数", 
@@ -86,15 +90,19 @@ TRANSLATIONS = {
     },
     "en": {
         "sidebar_title": "🔍 AuditAI Pro",
-        "sidebar_caption": "Live Crawler Edition v2.5",
+        "sidebar_caption": "Live Crawler Edition v2.6",
         "nav_label": "Navigation",
         "nav_options": ["Input URL", "Dashboard", "Data Matrix", "PPT Generator"],
         "lang_label": "Language / 语言",
         "clear_data": "Clear Data & Reset",
         "cache_info": "Cached {} pages",
+        "sitemap_status_title": "Sitemap Scan:",
+        "sitemap_found_href": "✅ Hreflang Found",
+        "sitemap_no_href": "⚠️ No Hreflang",
+        "sitemap_missing": "❌ Sitemap Missing",
         
         "input_header": "Start New Audit",
-        "input_info": "Note: Improved Deduplication (Canonical aware) and Smart Schema suggestions.",
+        "input_info": "Note: Robust Sitemap/Robots detection (Redirects supported) & Sitemap Hreflang check.",
         "input_label": "Target URL",
         "input_placeholder": "https://example.com",
         "max_pages_label": "Max Pages to Crawl", 
@@ -155,173 +163,209 @@ def is_valid_url(url):
 def get_content_hash(text):
     return hashlib.md5(text.encode('utf-8')).hexdigest()
 
+def get_browser_headers():
+    """返回模拟浏览器的 Headers，防止被 WAF 拦截"""
+    return {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Connection': 'keep-alive',
+    }
+
 def check_site_level_assets(start_url, lang="zh"):
-    """检查站点级别的 SEO 资产"""
+    """
+    检查站点级别的 SEO 资产。
+    改进点：使用 GET + allow_redirects 处理 301/302，并检查 Sitemap 内容中的 Hreflang。
+    """
     issues = []
+    sitemap_has_hreflang = False
+    
     parsed_url = urlparse(start_url)
     base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
+    headers = get_browser_headers()
     
     # 文本字典
     txt = {
         "zh": {
             "no_robots": "缺失 Robots.txt",
-            "no_robots_desc": "无法在根目录找到 robots.txt 文件。",
-            "no_robots_sugg": "在网站根目录创建 robots.txt 文件。",
+            "no_robots_desc": "无法在根目录找到 robots.txt 文件，或服务器拒绝访问 (403/404)。",
+            "no_robots_sugg": "在网站根目录创建 robots.txt 文件并确保可访问。",
             "no_sitemap": "根目录未发现 Sitemap.xml",
-            "no_sitemap_desc": "根目录无 sitemap.xml。",
+            "no_sitemap_desc": "根目录无 sitemap.xml，会降低搜索引擎发现新页面和更新页面的效率。",
             "no_sitemap_sugg": "确保 Sitemap 可访问并在 robots.txt 中引用。",
             "no_favicon": "站点缺失 Favicon",
-            "no_favicon_desc": "未在首页检测到 Favicon (link rel='icon' 或 /favicon.ico)。",
+            "no_favicon_desc": "未在首页检测到 Favicon，降低品牌辨识度，直接影响搜索结果页 (SERP) 的用户点击率。",
             "no_favicon_sugg": "配置全局 Favicon 以提升 SERP 品牌辨识度。"
         },
         "en": {
             "no_robots": "Missing Robots.txt",
-            "no_robots_desc": "Robots.txt file not found in root directory.",
-            "no_robots_sugg": "Create robots.txt in root directory.",
+            "no_robots_desc": "Robots.txt file not found in root directory, or access denied (403/404).",
+            "no_robots_sugg": "Create robots.txt in root directory and ensure it is accessible.",
             "no_sitemap": "Sitemap.xml Not Found",
             "no_sitemap_desc": "Sitemap.xml not found in root directory.",
             "no_sitemap_sugg": "Ensure Sitemap is accessible and linked in robots.txt.",
             "no_favicon": "Site Missing Favicon",
-            "no_favicon_desc": "No Favicon found on homepage or /favicon.ico.",
+            "no_favicon_desc": "No Favicon found. This reduces brand visibility and negatively impacts Click-Through Rate (CTR) in SERPs.",
             "no_favicon_sugg": "Configure a global Favicon for brand visibility."
         }
     }
     t = txt[lang]
 
-    # 1. Robots.txt
+    # 1. Robots.txt (使用 GET 替代 HEAD，更稳定)
+    robots_url = urljoin(base_url, "/robots.txt")
     try:
-        r = requests.head(urljoin(base_url, "/robots.txt"), timeout=5)
+        r = requests.get(robots_url, headers=headers, timeout=10, allow_redirects=True, stream=True)
+        # 只要最终状态码是 200，就算存在（即使经过了重定向）
         if r.status_code != 200:
-            issues.append({"severity": "Medium", "title": t["no_robots"], "desc": t["no_robots_desc"], "suggestion": t["no_robots_sugg"], "url": base_url})
-    except: pass 
+            issues.append({"severity": "Medium", "title": t["no_robots"], "desc": t["no_robots_desc"], "suggestion": t["no_robots_sugg"], "url": robots_url})
+        r.close()
+    except: 
+        # 网络错误也算缺失
+        issues.append({"severity": "Medium", "title": t["no_robots"], "desc": t["no_robots_desc"], "suggestion": t["no_robots_sugg"], "url": robots_url})
 
-    # 2. Sitemap.xml
+    # 2. Sitemap.xml Check & Parse
+    sitemap_url = urljoin(base_url, "/sitemap.xml")
     try:
-        r = requests.head(urljoin(base_url, "/sitemap.xml"), timeout=5)
-        if r.status_code != 200:
-            issues.append({"severity": "Low", "title": t["no_sitemap"], "desc": t["no_sitemap_desc"], "suggestion": t["no_sitemap_sugg"], "url": base_url})
-    except: pass
+        # 同样使用 GET + allow_redirects
+        r = requests.get(sitemap_url, headers=headers, timeout=15, allow_redirects=True)
+        if r.status_code == 200:
+            # 扫描 Sitemap 内容检查是否配置了 hreflang
+            # 检查关键词：'hreflang' 或 'xhtml:link'
+            content_sample = r.text[:500000].lower() # 只读前 500KB 防止内存溢出
+            if 'hreflang' in content_sample or 'xhtml:link' in content_sample:
+                sitemap_has_hreflang = True
+        else:
+            issues.append({"severity": "Low", "title": t["no_sitemap"], "desc": t["no_sitemap_desc"], "suggestion": t["no_sitemap_sugg"], "url": sitemap_url})
+    except:
+        issues.append({"severity": "Low", "title": t["no_sitemap"], "desc": t["no_sitemap_desc"], "suggestion": t["no_sitemap_sugg"], "url": sitemap_url})
 
     # 3. Favicon (Site Level Check)
     has_favicon = False
     try:
         # Check explicit link in homepage
-        resp = requests.get(base_url, timeout=10)
+        resp = requests.get(base_url, headers=headers, timeout=10, allow_redirects=True)
         soup = BeautifulSoup(resp.content, 'html.parser')
         if soup.find('link', rel=lambda x: x and 'icon' in x.lower()):
             has_favicon = True
         else:
             # Check implicit /favicon.ico
-            r_ico = requests.head(urljoin(base_url, "/favicon.ico"), timeout=5)
+            r_ico = requests.get(urljoin(base_url, "/favicon.ico"), headers=headers, timeout=5, allow_redirects=True, stream=True)
             if r_ico.status_code == 200 and int(r_ico.headers.get('content-length', 0)) > 0:
                 has_favicon = True
+            r_ico.close()
         
         if not has_favicon:
             issues.append({"severity": "Low", "title": t["no_favicon"], "desc": t["no_favicon_desc"], "suggestion": t["no_favicon_sugg"], "url": base_url})
     except: pass
 
-    return issues
+    return issues, sitemap_has_hreflang
 
-def analyze_page(url, html_content, status_code, lang="zh"):
+def analyze_page(url, html_content, status_code, lang="zh", sitemap_has_hreflang=False):
     """分析单个页面，支持多语言返回"""
     soup = BeautifulSoup(html_content, 'html.parser')
     issues = []
     
-    # 语言包
+    # 语言包 - 包含影响描述
     txt = {
         "zh": {
             "missing_title": "缺失页面标题 (Title)",
-            "missing_title_desc": "页面没有 <title> 标签。",
+            "missing_title_desc": "页面没有 <title> 标签。搜索引擎无法抓取页面主题，严重影响关键词排名。",
             "missing_title_sugg": "添加描述性标题。",
             "short_title": "标题过短",
-            "short_title_desc": "标题过短，难以覆盖关键词。",
+            "short_title_desc": "标题过短，难以覆盖核心关键词，降低了在搜索结果中的展示机会。",
             "short_title_sugg": "扩充标题长度。",
             "long_title": "标题过长",
-            "long_title_desc": "标题过长，可能被截断。",
+            "long_title_desc": "标题过长，可能在搜索结果中被截断，影响用户体验和点击率。",
             "long_title_sugg": "精简标题长度。",
             "missing_desc": "缺失元描述",
-            "missing_desc_desc": "缺失 Meta Description，影响点击率。",
+            "missing_desc_desc": "缺失 Meta Description。虽然不直接影响排名，但会大幅降低搜索结果的点击率 (CTR)。",
             "missing_desc_sugg": "添加 Meta Description。",
             "short_desc": "元描述过短",
-            "short_desc_desc": "元描述内容过少。",
+            "short_desc_desc": "元描述内容过少，无法在搜索结果中有效吸引用户点击。",
             "short_desc_sugg": "扩充元描述至 120-160 字符。",
             "missing_h1": "缺失 H1 标签",
-            "missing_h1_desc": "页面缺乏 H1 主标题。",
+            "missing_h1_desc": "页面缺乏 H1 主标题。搜索引擎难以理解内容的层级结构，降低了核心关键词的相关性权重。",
             "missing_h1_sugg": "添加唯一的 H1 标签。",
             "missing_viewport": "缺失移动端视口配置",
-            "missing_viewport_desc": "未配置 Viewport，移动端体验差。",
+            "missing_viewport_desc": "未配置 Viewport。Google 采用移动优先索引，这会导致页面在移动端排名大幅下降。",
             "missing_viewport_sugg": "添加 viewport meta 标签。",
             "missing_canonical": "缺失 Canonical 标签",
-            "missing_canonical_desc": "未指定规范链接，可能导致重复内容。",
+            "missing_canonical_desc": "未指定规范链接。如果页面存在多个访问路径（如带参数），会导致权重分散和重复内容问题。",
             "missing_canonical_sugg": "添加 canonical 标签指向标准 URL。",
             "missing_jsonld": "缺失结构化数据",
-            "missing_jsonld_desc": "未检测到 Schema 标记，无法获得富媒体结果。",
+            "missing_jsonld_desc": "未检测到 Schema 标记。错失获得富媒体搜索结果（如星级、价格显示）的机会，降低点击率。",
             "missing_jsonld_sugg": "根据页面类型添加对应的 JSON-LD：\n- 产品页: Product\n- 文章页: Article\n- 首页: Organization/WebSite",
             "missing_hreflang": "缺失 Hreflang",
-            "missing_hreflang_desc": "未发现语言区域标记。",
-            "missing_hreflang_sugg": "如为多语言站点请添加 hreflang。",
+            "missing_hreflang_desc": "未发现语言区域标记（HTML 或 Sitemap 中均未找到）。可能导致向用户展示错误的语言版本。",
+            "missing_hreflang_sugg": "如为多语言站点请在 HTML 头部或 Sitemap 中添加 hreflang。",
             "url_underscore": "URL 包含下划线",
-            "url_underscore_desc": "建议使用连字符 (-)。",
-            "url_underscore_sugg": "替换下划线为连字符。",
+            "url_underscore_desc": "URL 使用下划线 (_)。Google 将下划线视为字符连接而非分隔符，影响关键词切分和识别。",
+            "url_underscore_sugg": "替换下划线为连字符 (-)。",
             "url_uppercase": "URL 包含大写字母",
-            "url_uppercase_desc": "建议统一使用小写。",
+            "url_uppercase_desc": "URL 包含大写字母。服务器通常区分大小写，这极易导致重复内容收录和权重分散。",
             "url_uppercase_sugg": "转换为小写 URL。",
             "js_links": "发现 JS 伪链接",
-            "js_links_desc": "使用了 href='javascript:'，爬虫无法抓取。",
+            "js_links_desc": "使用了 href='javascript:'。爬虫无法跟踪此类链接，导致内部页面无法被发现和传递权重。",
             "js_links_sugg": "使用标准 <a href>。",
             "soft_404": "疑似软 404 (Soft 404)",
-            "soft_404_desc": "返回 200 但内容显示未找到。",
+            "soft_404_desc": "页面返回 200 状态码但内容显示“未找到”。这会严重浪费爬虫预算，并导致无效页面被索引。",
             "soft_404_sugg": "配置服务器返回 404 状态码。",
             "missing_alt": "图片缺失 Alt 属性",
-            "missing_alt_desc": "图片缺少替代文本。",
+            "missing_alt_desc": "图片缺少替代文本。搜索引擎无法理解图片内容，且不利于图片搜索排名和无障碍访问。",
             "missing_alt_sugg": "添加 alt 属性。",
+            "duplicate": "发现重复内容",
+            "duplicate_desc": "内容与另一页面高度重复。这会导致页面之间相互竞争排名（关键词同类相食），分散页面权重。",
+            "duplicate_sugg": "使用 Canonical 或合并页面。"
         },
         "en": {
             "missing_title": "Missing Title Tag",
-            "missing_title_desc": "Page has no <title> tag.",
+            "missing_title_desc": "Page has no <title> tag. Search engines cannot identify the page topic, severely impacting keyword rankings.",
             "missing_title_sugg": "Add a descriptive title.",
             "short_title": "Title Too Short",
-            "short_title_desc": "Title is too short for keywords.",
+            "short_title_desc": "Title is too short to cover core keywords, reducing visibility in search results.",
             "short_title_sugg": "Increase title length.",
             "long_title": "Title Too Long",
-            "long_title_desc": "Title may be truncated in SERPs.",
+            "long_title_desc": "Title may be truncated in SERPs, negatively affecting user experience and Click-Through Rate (CTR).",
             "long_title_sugg": "Shorten the title.",
             "missing_desc": "Missing Meta Description",
-            "missing_desc_desc": "Missing description affects CTR.",
+            "missing_desc_desc": "Missing description. While not a direct ranking factor, it significantly lowers the Click-Through Rate (CTR) in search results.",
             "missing_desc_sugg": "Add a meta description.",
             "short_desc": "Meta Description Too Short",
-            "short_desc_desc": "Description content is too thin.",
+            "short_desc_desc": "Description content is too thin to effectively attract user clicks in SERPs.",
             "short_desc_sugg": "Expand to 120-160 chars.",
             "missing_h1": "Missing H1 Tag",
-            "missing_h1_desc": "Page lacks a main H1 heading.",
+            "missing_h1_desc": "Page lacks a main H1 heading. Search engines struggle to understand content hierarchy, reducing the relevance weight of core keywords.",
             "missing_h1_sugg": "Add a unique H1 tag.",
             "missing_viewport": "Missing Mobile Viewport",
-            "missing_viewport_desc": "No viewport tag found.",
+            "missing_viewport_desc": "No viewport tag found. With Google's Mobile-First Indexing, this causes severe ranking drops on mobile devices.",
             "missing_viewport_sugg": "Add viewport meta tag.",
             "missing_canonical": "Missing Canonical Tag",
-            "missing_canonical_desc": "Canonical URL not specified.",
+            "missing_canonical_desc": "Canonical URL not specified. If the page has multiple access paths (e.g., parameters), it causes link equity dilution and duplicate content issues.",
             "missing_canonical_sugg": "Add canonical link tag.",
             "missing_jsonld": "Missing Structured Data",
-            "missing_jsonld_desc": "No Schema markup found for Rich Snippets.",
+            "missing_jsonld_desc": "No Schema markup found. Missed opportunity for Rich Snippets (e.g., stars, price), reducing CTR.",
             "missing_jsonld_sugg": "Add JSON-LD based on page type:\n- Product page: Product\n- Blog: Article\n- Home: Organization",
             "missing_hreflang": "Missing Hreflang",
-            "missing_hreflang_desc": "No language/region targeting found.",
+            "missing_hreflang_desc": "No language/region targeting found (Checked both HTML & Sitemap). This may cause the wrong language version to be shown.",
             "missing_hreflang_sugg": "Add hreflang if multilingual.",
             "url_underscore": "URL Contains Underscores",
-            "url_underscore_desc": "Hyphens (-) are preferred.",
+            "url_underscore_desc": "URL uses underscores (_). Google treats underscores as character joiners rather than separators, affecting keyword parsing.",
             "url_underscore_sugg": "Replace underscores with hyphens.",
             "url_uppercase": "URL Contains Uppercase",
-            "url_uppercase_desc": "URLs are case-sensitive.",
+            "url_uppercase_desc": "URL contains uppercase letters. Servers are case-sensitive, leading to potential duplicate content and split link equity.",
             "url_uppercase_sugg": "Use lowercase URLs.",
             "js_links": "JavaScript Pseudo-links",
-            "js_links_desc": "href='javascript:' found.",
+            "js_links_desc": "href='javascript:' found. Crawlers cannot follow these links, preventing internal pages from being discovered and ranked.",
             "js_links_sugg": "Use standard <a href>.",
             "soft_404": "Suspected Soft 404",
-            "soft_404_desc": "Returns 200 but content says 'Not Found'.",
+            "soft_404_desc": "Returns 200 but content says 'Not Found'. This wastes crawl budget and causes invalid pages to be indexed.",
             "soft_404_sugg": "Return 404 HTTP status code.",
             "missing_alt": "Images Missing Alt Text",
-            "missing_alt_desc": "Images lack alternative text.",
+            "missing_alt_desc": "Images lack alternative text. Search engines cannot understand image content, hurting image search rankings and accessibility.",
             "missing_alt_sugg": "Add alt attributes.",
+            "duplicate": "Duplicate Content Detected",
+            "duplicate_desc": "Content highly matches another page. This causes keyword cannibalization and dilutes page authority.",
+            "duplicate_sugg": "Use canonicals or merge pages."
         }
     }
     t = txt[lang]
@@ -395,10 +439,12 @@ def analyze_page(url, html_content, status_code, lang="zh"):
          custom_sugg = f"Recommended Schema: **{spec_rec}**.\n\n" + sugg_text
          issues.append({"severity": "Medium", "title": t["missing_jsonld"], "desc": t["missing_jsonld_desc"], "suggestion": custom_sugg, "url": url})
 
-    # 8. Hreflang
+    # 8. Hreflang (Cross-check with Sitemap Status)
     hreflang = soup.find('link', hreflang=True)
     if not hreflang:
-        issues.append({"severity": "Low", "title": t["missing_hreflang"], "desc": t["missing_hreflang_desc"], "suggestion": t["missing_hreflang_sugg"], "url": url})
+        if not sitemap_has_hreflang:
+            # 只有在 Sitemap 也没配置的情况下才报错
+            issues.append({"severity": "Low", "title": t["missing_hreflang"], "desc": t["missing_hreflang_desc"], "suggestion": t["missing_hreflang_sugg"], "url": url})
 
     # 9. URL Structure
     parsed_url = urlparse(url)
@@ -460,16 +506,22 @@ def crawl_website(start_url, max_pages=100, lang="zh"):
     results_data = []
     all_issues = []
     
-    # 获取对应语言的 UI 文本
+    # 获取对应语言的 UI 文本 - 重复内容检查
     t_dup_title = "Duplicate Content Detected" if lang == "en" else "发现重复内容"
     t_dup_desc = "Content matches another page without proper canonical tag." if lang == "en" else "内容重复且未配置 Canonical 指向源页面。"
     t_dup_sugg = "Add canonical tag pointing to: " if lang == "en" else "添加 Canonical 标签指向: "
     
     progress_bar = st.progress(0, text="Initializing...")
+    sitemap_has_hreflang = False
     
     try:
-        site_issues = check_site_level_assets(start_url, lang=lang)
+        # 执行站点级检查，并获取 Sitemap Hreflang 状态
+        site_issues, sitemap_has_hreflang = check_site_level_assets(start_url, lang=lang)
         all_issues.extend(site_issues)
+        
+        # 保存到 Session State 供 Sidebar 显示
+        st.session_state['sitemap_hreflang_found'] = sitemap_has_hreflang
+        
     except Exception as e:
         st.toast(f"Site-check failed: {str(e)}")
 
@@ -485,13 +537,16 @@ def crawl_website(start_url, max_pages=100, lang="zh"):
         progress_bar.progress(progress, text=f"Crawling ({pages_crawled}/{max_pages}): {url}")
         
         try:
-            headers = {'User-Agent': 'Mozilla/5.0 (compatible; SEOAuditBot/2.5)'}
-            response = requests.get(url, headers=headers, timeout=10)
+            headers = get_browser_headers()
+            response = requests.get(url, headers=headers, timeout=10, allow_redirects=True)
             
             content_type = response.headers.get('Content-Type', '').lower()
             if 'text/html' in content_type:
-                # 传递 lang 参数
-                page_data, page_issues, new_links = analyze_page(url, response.content, response.status_code, lang=lang)
+                # 传递 lang 参数和 sitemap_has_hreflang 状态
+                page_data, page_issues, new_links = analyze_page(
+                    url, response.content, response.status_code, 
+                    lang=lang, sitemap_has_hreflang=sitemap_has_hreflang
+                )
                 
                 # --- Advanced Duplicate Check (Canonical Aware) ---
                 current_hash = page_data['Content_Hash']
@@ -651,6 +706,7 @@ def create_styled_pptx(slides_data, lang="zh"):
 if 'audit_data' not in st.session_state: st.session_state['audit_data'] = None
 if 'audit_issues' not in st.session_state: st.session_state['audit_issues'] = []
 if 'language' not in st.session_state: st.session_state['language'] = "zh" # 默认语言
+if 'sitemap_hreflang_found' not in st.session_state: st.session_state['sitemap_hreflang_found'] = False
 
 # --- 5. Sidebar ---
 # 获取当前语言对应的 UI 文本
@@ -682,9 +738,18 @@ with st.sidebar:
     st.divider()
     if st.session_state['audit_data'] is not None:
         st.success(ui["cache_info"].format(len(st.session_state['audit_data'])))
+        
+        # 显示 Sitemap 扫描结果
+        st.markdown(f"**{ui['sitemap_status_title']}**")
+        if st.session_state['sitemap_hreflang_found']:
+            st.caption(ui["sitemap_found_href"])
+        else:
+            st.caption(ui["sitemap_no_href"])
+            
         if st.button(ui["clear_data"]):
             st.session_state['audit_data'] = None
             st.session_state['audit_issues'] = []
+            st.session_state['sitemap_hreflang_found'] = False
             st.rerun()
 
 # --- 6. Main Logic ---
