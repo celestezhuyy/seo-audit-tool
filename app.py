@@ -82,10 +82,11 @@ def analyze_page(url, html_content, status_code):
     if missing_alt > 0:
         issues.append({
             "severity": "Medium",
-            "title": f"发现 {missing_alt} 张图片缺失 Alt 属性",
+            "title": "图片缺失 Alt 属性", # 统一 Title 以便聚合
             "desc": "图片缺少替代文本，影响图片搜索排名和无障碍访问。",
             "suggestion": "为所有 img 标签添加描述性的 alt 属性。",
-            "url": url
+            "url": url,
+            "meta": f"该页面有 {missing_alt} 张图片缺失 Alt" # 额外信息
         })
 
     # E. 提取内部链接 (用于继续爬取)
@@ -109,7 +110,7 @@ def analyze_page(url, html_content, status_code):
         "Issues_Count": len(issues)
     }, issues, internal_links
 
-def crawl_website(start_url, max_pages=15):
+def crawl_website(start_url, max_pages=100):
     """执行广度优先爬取"""
     visited = set()
     queue = [start_url]
@@ -194,7 +195,7 @@ with st.sidebar:
 
 if menu == "输入网址":
     st.header("开始新的审计")
-    st.info("说明: 这是一个真实爬虫。输入网址后，系统将实时访问该网站并分析前 15 个页面。")
+    st.info("说明: 这是一个真实爬虫。输入网址后，系统将实时访问该网站并分析前 100 个页面。")
     
     col1, col2 = st.columns([3, 1])
     with col1:
@@ -206,8 +207,9 @@ if menu == "输入网址":
         if not is_valid_url(url_input):
             st.error("网址格式错误，请确保包含 http:// 或 https://")
         else:
-            with st.spinner("正在启动爬虫，请稍候..."):
-                data, issues = crawl_website(url_input, max_pages=15)
+            with st.spinner("正在启动爬虫，爬取 100 个页面可能需要 1-2 分钟，请耐心等待..."):
+                # 这里修改为 100 页
+                data, issues = crawl_website(url_input, max_pages=100)
                 
                 if not data:
                     st.error("未能爬取到任何页面，请检查网址是否可访问，或网站是否有反爬虫机制。")
@@ -229,7 +231,7 @@ elif menu == "仪表盘":
         
         # 计算健康度 (模拟算法)
         total_issues = len(issues)
-        health_score = max(0, 100 - (total_issues * 2))
+        health_score = max(0, 100 - int(total_issues * 0.5)) # 降低扣分权重因为页面多了
         
         kpi1, kpi2, kpi3, kpi4 = st.columns(4)
         kpi1.metric("网站健康度", f"{health_score}/100")
@@ -285,35 +287,74 @@ elif menu == "PPT 生成器":
     elif not st.session_state['audit_issues']:
         st.success("恭喜！未发现严重问题，无需生成修复建议 PPT。")
     else:
-        st.caption("以下幻灯片根据真实发现的问题自动生成")
+        # --- 聚合逻辑开始 ---
+        raw_issues = st.session_state['audit_issues']
+        grouped_issues = {}
         
-        # 只展示前 10 个问题
-        ppt_issues = st.session_state['audit_issues'][:10]
+        for issue in raw_issues:
+            title = issue['title']
+            if title not in grouped_issues:
+                # 初始化该类问题
+                grouped_issues[title] = {
+                    "title": title,
+                    "severity": issue['severity'],
+                    "desc": issue['desc'],
+                    "suggestion": issue['suggestion'],
+                    "count": 0,
+                    "examples": [], # 存储受影响的URL
+                    "meta": issue.get('meta', '') # 额外信息
+                }
+            
+            grouped_issues[title]['count'] += 1
+            if len(grouped_issues[title]['examples']) < 3: # 只存前3个例子
+                grouped_issues[title]['examples'].append(issue['url'])
+        
+        # 将字典转换为列表，并按严重程度排序 (Critical > High > Medium)
+        severity_order = {"Critical": 0, "High": 1, "Medium": 2}
+        ppt_slides = sorted(
+            list(grouped_issues.values()), 
+            key=lambda x: (severity_order.get(x['severity'], 3), -x['count'])
+        )
+        # --- 聚合逻辑结束 ---
+
+        st.caption(f"系统已自动聚合相同类型的问题，共生成 {len(ppt_slides)} 张关键幻灯片。")
         
         if 'slide_index' not in st.session_state:
             st.session_state.slide_index = 0
             
         # 防止索引越界
-        if st.session_state.slide_index >= len(ppt_issues):
+        if st.session_state.slide_index >= len(ppt_slides):
             st.session_state.slide_index = 0
             
-        issue = ppt_issues[st.session_state.slide_index]
+        slide = ppt_slides[st.session_state.slide_index]
         
         # 模拟 PPT 框架 (16:9)
         with st.container(border=True):
-            st.markdown(f"### 问题 #{st.session_state.slide_index + 1}: {issue['title']}")
-            st.markdown(f"**🔗 受影响 URL:** `{issue['url']}`")
+            # 标题区域展示统计数据
+            st.markdown(f"### 问题类型: {slide['title']}")
             
             c1, c2 = st.columns([1, 1])
             with c1:
-                color = "red" if issue['severity'] == "Critical" else "orange" if issue['severity'] == "High" else "blue"
-                st.markdown(f"**严重程度:** :{color}[{issue['severity']}]")
-                st.markdown(f"**问题描述:** {issue['desc']}")
-                st.info(f"💡 **修复建议:** {issue['suggestion']}")
+                color = "red" if slide['severity'] == "Critical" else "orange" if slide['severity'] == "High" else "blue"
+                st.markdown(f"**严重程度:** :{color}[{slide['severity']}]")
+                st.markdown(f"**影响范围:** 全站共发现 **{slide['count']}** 个页面存在此问题。")
+                
+                st.markdown("**问题描述:**")
+                st.write(slide['desc'])
+                
+                st.info(f"💡 **修复建议:** {slide['suggestion']}")
             
             with c2:
+                # 展示示例 URL 列表
+                st.markdown("**🔍 受影响页面示例:**")
+                for ex_url in slide['examples']:
+                    st.markdown(f"- `{ex_url}`")
+                if slide['count'] > 3:
+                    st.caption(f"...以及其他 {slide['count'] - 3} 个页面。")
+                    
+                st.markdown("---")
                 # 截图占位符
-                st.image("https://placehold.co/600x400/EEE/31343C?text=Screenshot+Required", caption="请在此处放置该 URL 的问题截图")
+                st.image("https://placehold.co/600x300/EEE/31343C?text=Screenshot+Example", caption="请截取上述示例页面之一作为证据")
 
         # 翻页按钮
         col_prev, col_info, col_next = st.columns([1, 2, 1])
@@ -323,9 +364,9 @@ elif menu == "PPT 生成器":
                     st.session_state.slide_index -= 1
                     st.rerun()
         with col_info:
-            st.write(f"Slide {st.session_state.slide_index + 1} / {len(ppt_issues)}")
+            st.markdown(f"<div style='text-align: center'>Slide {st.session_state.slide_index + 1} / {len(ppt_slides)}</div>", unsafe_allow_html=True)
         with col_next:
             if st.button("下一页 ➡️"):
-                if st.session_state.slide_index < len(ppt_issues) - 1:
+                if st.session_state.slide_index < len(ppt_slides) - 1:
                     st.session_state.slide_index += 1
                     st.rerun()
