@@ -40,7 +40,7 @@ SEVERITY_ORDER = {"Critical": 0, "High": 1, "Medium": 2, "Low": 3}
 TRANSLATIONS = {
     "zh": {
         "sidebar_title": "🔍 AuditAI Pro",
-        "sidebar_caption": "深度审计版 v3.8.1",
+        "sidebar_caption": "深度审计版 v3.8.2",
         "nav_label": "功能导航",
         "nav_options": ["输入网址", "仪表盘", "数据矩阵", "PPT 生成器"],
         "lang_label": "语言 / Language",
@@ -124,7 +124,7 @@ TRANSLATIONS = {
         "serp_sim_title": "Google 搜索结果模拟 (SERP):",
         "rich_sim_title": "富媒体结果模拟 (Rich Results):",
 
-        # --- Issues (Now separated Desc and Impact) ---
+        # --- Issues ---
         "no_robots": "缺失 Robots.txt",
         "no_robots_desc": "无法访问 robots.txt 文件。",
         "no_robots_impact": "爬虫可能抓取无用页面，消耗服务器资源，且无法有效分配爬取预算。",
@@ -235,11 +235,11 @@ TRANSLATIONS = {
         "missing_alt": "图片缺失 Alt 属性", 
         "missing_alt_desc": "图片缺少替代文本。",
         "missing_alt_impact": "搜索引擎无法理解图片内容，错失图片搜索流量。",
+        "missing_alt_sugg": "添加图片 alt 属性，描述图片内容。", # Added
         
         "js_links": "发现 JS 伪链接", 
         "js_links_desc": "href='javascript:' 爬虫无法抓取。",
         "js_links_impact": "导致内部链接断裂，权重无法传递，深层页面变成“孤岛”。",
-        "js_links_sugg": "使用标准 <a href> 标签。",
         
         "url_underscore": "URL 包含下划线", 
         "url_underscore_desc": "使用下划线分隔单词。",
@@ -251,7 +251,7 @@ TRANSLATIONS = {
     },
     "en": {
         "sidebar_title": "🔍 AuditAI Pro",
-        "sidebar_caption": "Deep Audit Edition v3.8",
+        "sidebar_caption": "Deep Audit Edition v3.8.2",
         "nav_label": "Navigation",
         "nav_options": ["Input URL", "Dashboard", "Data Matrix", "PPT Generator"],
         "lang_label": "Language / 语言",
@@ -361,8 +361,9 @@ TRANSLATIONS = {
         "missing_jsonld_sugg": "Add JSON-LD schema (Product/Article).",
         "missing_hreflang": "No Hreflang", "missing_hreflang_desc": "Missing tags.", "missing_hreflang_impact": "Poor internationalization.",
         "soft_404": "Soft 404", "soft_404_desc": "Fake 200.", "soft_404_impact": "Wasted budget.",
-        "missing_alt": "Missing Alt", "missing_alt_desc": "No alt text.", "missing_alt_impact": "Bad for Image SEO.",
-        "js_links": "JS Links", "js_links_desc": "Uncrawlable.", "js_links_impact": "Broken link graph.", "js_links_sugg": "Use standard links.",
+        "missing_alt": "Missing Alt", "missing_alt_desc": "No alt text.", "missing_alt_impact": "Bad for Image SEO.", 
+        "missing_alt_sugg": "Add descriptive alt attributes.", # Added
+        "js_links": "JS Links", "js_links_desc": "Uncrawlable.", "js_links_impact": "Broken link graph.",
         "url_underscore": "URL Underscores", "url_underscore_desc": "Has _.", "url_underscore_impact": "Bad parsing.",
         "url_uppercase": "URL Uppercase", "url_uppercase_desc": "Has Upper.", "url_uppercase_impact": "Duplicate risk."
     }
@@ -694,7 +695,6 @@ def create_styled_pptx(slides_data, lang="zh"):
         if color: font_obj.color.rgb = color
 
     def draw_serp_preview(slide, issue_title, evidence, url):
-        # ... (Same as before)
         box = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(7), Inches(2), Inches(5.8), Inches(2.5))
         box.fill.solid()
         box.fill.fore_color.rgb = RGBColor(255, 255, 255)
@@ -702,20 +702,24 @@ def create_styled_pptx(slides_data, lang="zh"):
         tf = box.text_frame
         tf.margin_left = Inches(0.2)
         tf.margin_top = Inches(0.2)
+        
         p = tf.add_paragraph()
         domain = urlparse(url).netloc
         p.text = f"{domain} › ..."
         set_font(p.font, 12, False, RGBColor(32, 33, 36))
+        
         p = tf.add_paragraph()
         p.space_before = Pt(5)
         display_title = evidence if evidence else "Untitled Page"
         if len(display_title) > 60 and ("Long" in issue_title or "过长" in issue_title): display_title = display_title[:55] + " ..."
         p.text = display_title
         set_font(p.font, 18, False, RGBColor(26, 13, 171)) 
+        
         p = tf.add_paragraph()
         p.space_before = Pt(3)
         p.text = "Please provide a meta description..."
         set_font(p.font, 14, False, RGBColor(77, 81, 86))
+
         label = slide.shapes.add_textbox(Inches(7), Inches(1.6), Inches(3), Inches(0.3))
         p = label.text_frame.add_paragraph()
         p.text = txt["serp_sim_title"]
