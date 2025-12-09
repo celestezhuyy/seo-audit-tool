@@ -856,24 +856,28 @@ with st.sidebar:
 if menu_key == "input":
     st.header(ui["input_header"])
     st.info(ui["input_info"])
-    c1, c2 = st.columns([3, 1])
-    with c1: target_url = st.text_input(ui["input_label"], placeholder=ui["input_placeholder"])
-    with c2: max_p = st.number_input(ui["max_pages_label"], 1, 1000, 100)
     
-    with st.expander(ui["adv_settings"]):
-        m_rob = st.text_input(ui["manual_robots"])
-        m_map = st.text_area(ui["manual_sitemaps"]).split('\n')
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        # Fixed: variable name changed from url_input to target_url
+        target_url = st.text_input(ui["input_label"], placeholder=ui["input_placeholder"])
+    with col2:
+        max_pages = st.number_input(ui.get("max_pages_label", "Max Pages"), min_value=1, max_value=1000, value=100)
     
-    with st.expander(ui["psi_settings"]):
+    with st.expander(ui.get("adv_settings", "Advanced")):
         key = st.text_input(ui["psi_api_key_label"], type="password", help=ui["psi_api_help"])
         st.caption(ui["psi_get_key"])
 
     if st.button(ui["start_btn"], type="primary"):
-        if not is_valid_url(target_url): st.error(ui["error_url"])
+        # Now target_url is defined and valid
+        if not is_valid_url(target_url): 
+            st.error(ui["error_url"])
         else:
-            with st.spinner(ui["spinner_crawl"].format(max_p)):
-                data, issues, error_msg = crawl_website(target_url, max_p, lang, m_rob, m_map, key)
-                if not data: st.error(ui["error_no_data"].format(error_msg or "Unknown Error"))
+            with st.spinner(ui["spinner_crawl"].format(max_pages)):
+                # Fixed: passing target_url instead of url_input
+                data, issues, error_msg = crawl_website(target_url, max_pages, lang, manual_robots, manual_sitemaps, psi_key)
+                if not data:
+                    st.error(ui["error_no_data"].format(error_msg or "Unknown Error"))
                 else:
                     st.session_state['audit_data'] = data
                     st.session_state['audit_issues'] = issues
