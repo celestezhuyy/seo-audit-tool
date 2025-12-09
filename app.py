@@ -33,6 +33,10 @@ st.set_page_config(
 )
 
 # --- 2. 核心排序逻辑 (Strict Logic Flow) ---
+# 恢复缺失的分类和严重程度排序配置
+CATEGORY_ORDER = ["cwv_performance", "access", "indexability", "technical", "content", "image_ux"]
+SEVERITY_ORDER = {"Critical": 0, "High": 1, "Medium": 2, "Low": 3}
+
 # 这是 PPT 和列表的“剧本”，决定了问题出现的先后顺序
 ISSUE_PRIORITY_LIST = [
     # --- 第1章: 可访问性与基础 (Foundation) ---
