@@ -36,13 +36,15 @@ st.set_page_config(
 TRANSLATIONS = {
     "zh": {
         "sidebar_title": "🔍 AuditAI Pro",
-        "sidebar_caption": "深度审计版 v3.3.1",
+        "sidebar_caption": "深度审计版 v3.3.2",
         "nav_label": "功能导航",
         "nav_options": ["输入网址", "仪表盘", "数据矩阵", "PPT 生成器"],
         "lang_label": "语言 / Language",
         "clear_data": "清除数据并重置",
         "cache_info": "已缓存 {} 个页面",
         "sitemap_status_title": "Sitemap 状态:",
+        "sitemap_found_href": "✅ 发现 Hreflang 配置", # Fixed: Added missing key
+        "sitemap_no_href": "⚠️ 未发现 Hreflang",     # Fixed: Added missing key
         
         # PSI 相关
         "psi_settings": "Google PSI API 设置 (可选)",
@@ -108,13 +110,15 @@ TRANSLATIONS = {
     },
     "en": {
         "sidebar_title": "🔍 AuditAI Pro",
-        "sidebar_caption": "Deep Audit Edition v3.3.1",
+        "sidebar_caption": "Deep Audit Edition v3.3.2",
         "nav_label": "Navigation",
         "nav_options": ["Input URL", "Dashboard", "Data Matrix", "PPT Generator"],
         "lang_label": "Language / 语言",
         "clear_data": "Clear Data & Reset",
         "cache_info": "Cached {} pages",
         "sitemap_status_title": "Sitemap Status:",
+        "sitemap_found_href": "✅ Hreflang Found", # Fixed: Added missing key
+        "sitemap_no_href": "⚠️ No Hreflang",       # Fixed: Added missing key
         
         # PSI Related
         "psi_settings": "Google PSI API Settings (Optional)",
