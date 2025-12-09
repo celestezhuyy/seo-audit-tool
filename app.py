@@ -32,7 +32,7 @@ st.set_page_config(
 TRANSLATIONS = {
     "zh": {
         "sidebar_title": "🔍 AuditAI Pro",
-        "sidebar_caption": "深度审计版 v3.1",
+        "sidebar_caption": "深度审计版 v3.2",
         "nav_label": "功能导航",
         "nav_options": ["输入网址", "仪表盘", "数据矩阵", "PPT 生成器"],
         "lang_label": "语言 / Language",
@@ -44,6 +44,7 @@ TRANSLATIONS = {
         "psi_settings": "Google PSI API 设置 (可选)",
         "psi_api_key_label": "输入 Google PageSpeed API Key",
         "psi_api_help": "留空则仅进行静态代码检查。填入 Key 可获取首页的真实用户体验数据 (LCP, CLS, INP)。",
+        "psi_get_key": "没有 API Key? [点击这里免费申请](https://developers.google.com/speed/docs/insights/v5/get-started)",
         "psi_fetching": "正在调用 Google API 获取真实 CWV 数据...",
         "psi_success": "成功获取真实用户数据！",
         "psi_error": "API 调用失败或无 CrUX 数据",
@@ -103,7 +104,7 @@ TRANSLATIONS = {
     },
     "en": {
         "sidebar_title": "🔍 AuditAI Pro",
-        "sidebar_caption": "Deep Audit Edition v3.1",
+        "sidebar_caption": "Deep Audit Edition v3.2",
         "nav_label": "Navigation",
         "nav_options": ["Input URL", "Dashboard", "Data Matrix", "PPT Generator"],
         "lang_label": "Language / 语言",
@@ -115,6 +116,7 @@ TRANSLATIONS = {
         "psi_settings": "Google PSI API Settings (Optional)",
         "psi_api_key_label": "Enter Google PageSpeed API Key",
         "psi_api_help": "Leave empty for static check only. Enter Key to fetch Real User Metrics (LCP, CLS, INP) for the home page.",
+        "psi_get_key": "No API Key? [Get one for free here](https://developers.google.com/speed/docs/insights/v5/get-started)",
         "psi_fetching": "Fetching real CWV data from Google API...",
         "psi_success": "Real user data fetched!",
         "psi_error": "API Failed or No CrUX Data",
@@ -400,3 +402,495 @@ def analyze_page(url, html_content, status_code, lang="zh", sitemap_has_hreflang
         anchor_text = link.get_text().strip().lower()
         if anchor_text in bad_anchors:
             found_bad_anchors.append(anchor_text)
+            
+    if found_bad_anchors:
+        unique_bad = list(set(found_bad_anchors))
+        issues.append({"severity": "Low", "title": t["anchor_bad_quality"], "desc": f"{t['anchor_bad_quality_desc']} Found: {', '.join(unique_bad[:3])}", "suggestion": "Use descriptive keywords.", "url": url})
+
+    # --- 4. 基础检查 (Title, H1, etc.) ---
+    title_tag = soup.title
+    title = title_tag.string.strip() if title_tag and title_tag.string else None
+    if not title:
+        issues.append({"severity": "High", "title": t["missing_title"], "desc": "No title tag found.", "suggestion": "Add title tag.", "url": url})
+    elif len(title) < 10:
+         issues.append({"severity": "Medium", "title": t["short_title"], "desc": "Title too short.", "suggestion": "Expand title.", "url": url, "evidence": title})
+    elif len(title) > 60:
+         issues.append({"severity": "Low", "title": t["long_title"], "desc": "Title too long (>60 chars).", "suggestion": "Shorten title.", "url": url, "evidence": title})
+
+    meta_desc = soup.find('meta', attrs={'name': 'description'})
+    desc_content = meta_desc['content'].strip() if meta_desc and meta_desc.get('content') else None
+    if not desc_content:
+        issues.append({"severity": "High", "title": t["missing_desc"], "desc": "No meta description.", "suggestion": "Add meta description.", "url": url})
+    elif len(desc_content) < 50:
+        issues.append({"severity": "Low", "title": t["short_desc"], "desc": "Description too short.", "suggestion": "Expand description.", "url": url, "evidence": desc_content})
+
+    h1 = soup.find('h1')
+    if not h1: issues.append({"severity": "High", "title": t["missing_h1"], "desc": "No H1 tag.", "suggestion": "Add H1 tag.", "url": url})
+
+    if not soup.find('meta', attrs={'name': 'viewport'}):
+        issues.append({"severity": "Critical", "title": t["missing_viewport"], "desc": "Mobile viewport missing.", "suggestion": "Add viewport meta.", "url": url})
+
+    canonical_tag = soup.find('link', attrs={'rel': 'canonical'})
+    canonical_url = canonical_tag['href'] if canonical_tag else None
+    if not canonical_url:
+        issues.append({"severity": "Medium", "title": t["missing_canonical"], "desc": "Canonical tag missing.", "suggestion": "Add canonical tag.", "url": url})
+
+    if not soup.find('script', type='application/ld+json'):
+         issues.append({"severity": "Medium", "title": t["missing_jsonld"], "desc": t["missing_jsonld_desc"], "suggestion": t["missing_jsonld_sugg"], "url": url})
+
+    if status_code == 200:
+        error_kws = ["page not found", "404 error", "页面未找到"]
+        is_s404 = False
+        if title and any(k in title.lower() for k in error_kws): is_s404 = True
+        elif soup.find('h1') and any(k in soup.find('h1').get_text().lower() for k in error_kws): is_s404 = True
+        if is_s404:
+            issues.append({"severity": "Critical", "title": t["soft_404"], "desc": "Page looks like 404 but returns 200.", "suggestion": "Fix server headers.", "url": url})
+
+    return {
+        "URL": url, "Status": status_code, "Title": title or "No Title",
+        "H1": h1.get_text().strip() if h1 else "No H1", "Links_Count": len(soup.find_all('a')),
+        "Issues_Count": len(issues), "Content_Hash": content_hash, "Canonical": canonical_url
+    }, issues, []
+
+def crawl_website(start_url, max_pages=100, lang="zh", manual_robots=None, manual_sitemaps=None, psi_key=None):
+    visited = set()
+    seen_hashes = {} 
+    queue = [start_url]
+    results_data = []
+    all_issues = []
+    
+    t_dup_title = "Duplicate Content Detected" if lang == "en" else "发现重复内容"
+    t_dup_desc = "Content matches another page." if lang == "en" else "内容重复。"
+    t_dup_sugg = "Add canonical." if lang == "en" else "添加 Canonical。"
+    
+    progress_bar = st.progress(0, text="Initializing...")
+    sitemap_has_hreflang = False
+    
+    # 1. Site Level Checks
+    try:
+        site_issues, sitemap_has_hreflang = check_site_level_assets(
+            start_url, lang=lang, manual_robots=manual_robots, manual_sitemaps=manual_sitemaps
+        )
+        all_issues.extend(site_issues)
+        st.session_state['sitemap_hreflang_found'] = sitemap_has_hreflang
+    except Exception as e:
+        pass
+
+    # 2. CWV (Real User Data via API)
+    cwv_data = None
+    if psi_key:
+        with st.spinner(TRANSLATIONS[lang]["psi_fetching"]):
+            cwv_data = fetch_psi_data(start_url, psi_key)
+            if cwv_data and "error" not in cwv_data:
+                st.session_state['cwv_data'] = cwv_data
+            else:
+                st.session_state['cwv_data'] = None
+                if cwv_data and "error" in cwv_data:
+                    st.toast(f"PSI Error: {cwv_data['error']}")
+
+    # 3. Crawl
+    pages_crawled = 0
+    headers = get_browser_headers()
+    
+    while queue and pages_crawled < max_pages:
+        url = queue.pop(0)
+        if url in visited: continue
+        visited.add(url)
+        pages_crawled += 1
+        
+        progress = int((pages_crawled / max_pages) * 100)
+        progress_bar.progress(progress, text=f"Crawling ({pages_crawled}/{max_pages}): {url}")
+        
+        try:
+            response = requests.get(url, headers=headers, timeout=10, allow_redirects=True)
+            content_type = response.headers.get('Content-Type', '').lower()
+            if 'text/html' in content_type:
+                page_data, page_issues, _ = analyze_page(
+                    url, response.content, response.status_code, 
+                    lang=lang, sitemap_has_hreflang=sitemap_has_hreflang
+                )
+                
+                current_hash = page_data['Content_Hash']
+                current_canonical = page_data['Canonical']
+                
+                if current_hash in seen_hashes:
+                    original_url = seen_hashes[current_hash]
+                    is_ok = current_canonical and current_canonical != url
+                    if not is_ok:
+                        page_issues.append({
+                            "severity": "High", "title": t_dup_title, "desc": f"{t_dup_desc} (vs {original_url})", 
+                            "suggestion": t_dup_sugg, "url": url, "meta": f"Duplicate of: {original_url}"
+                        })
+                else:
+                    seen_hashes[current_hash] = url
+
+                results_data.append(page_data)
+                all_issues.extend(page_issues)
+                
+                soup = BeautifulSoup(response.content, 'html.parser')
+                base_domain = urlparse(url).netloc
+                for a in soup.find_all('a', href=True):
+                    link = urljoin(url, a['href'])
+                    if urlparse(link).netloc == base_domain and link not in visited and link not in queue:
+                        if not any(link.lower().endswith(ext) for ext in ['.jpg', '.png', '.pdf']):
+                            queue.append(link)
+        except Exception as e:
+            pass
+    
+    progress_bar.progress(100, text="Done!")
+    time.sleep(0.5)
+    progress_bar.empty()
+    return results_data, all_issues
+
+def create_styled_pptx(slides_data, lang="zh"):
+    prs = Presentation()
+    prs.slide_width = Inches(13.333)
+    prs.slide_height = Inches(7.5)
+    txt = TRANSLATIONS[lang] 
+    
+    def set_font(font_obj, size, bold=False, color=None):
+        font_obj.size = Pt(size)
+        font_obj.name = 'Microsoft YaHei' if lang == "zh" else 'Arial'
+        font_obj.bold = bold
+        if color: font_obj.color.rgb = color
+
+    def draw_serp_preview(slide, issue_title, evidence, url):
+        box = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(7), Inches(2), Inches(5.8), Inches(2.5))
+        box.fill.solid()
+        box.fill.fore_color.rgb = RGBColor(255, 255, 255)
+        box.line.color.rgb = RGBColor(220, 220, 220)
+        tf = box.text_frame
+        tf.margin_left = Inches(0.2)
+        tf.margin_top = Inches(0.2)
+        
+        p = tf.add_paragraph()
+        domain = urlparse(url).netloc
+        p.text = f"{domain} › ..."
+        set_font(p.font, 12, False, RGBColor(32, 33, 36))
+        
+        p = tf.add_paragraph()
+        p.space_before = Pt(5)
+        display_title = evidence if evidence else "Untitled Page"
+        if len(display_title) > 60 and ("Long" in issue_title or "过长" in issue_title):
+            display_title = display_title[:55] + " ..."
+        p.text = display_title
+        set_font(p.font, 18, False, RGBColor(26, 13, 171)) 
+        
+        p = tf.add_paragraph()
+        p.space_before = Pt(3)
+        p.text = "Please provide a meta description..."
+        set_font(p.font, 14, False, RGBColor(77, 81, 86))
+
+        label = slide.shapes.add_textbox(Inches(7), Inches(1.6), Inches(3), Inches(0.3))
+        p = label.text_frame.add_paragraph()
+        p.text = txt["serp_sim_title"]
+        set_font(p.font, 12, True, RGBColor(100, 100, 100))
+
+    # Cover
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    bg = slide.shapes.add_shape(1, 0, 0, Inches(13.333), Inches(7.5))
+    bg.fill.solid()
+    bg.fill.fore_color.rgb = RGBColor(18, 52, 86)
+    
+    title = slide.shapes.add_textbox(Inches(1), Inches(2.5), Inches(11), Inches(2))
+    p = title.text_frame.add_paragraph()
+    p.text = txt["ppt_cover_title"]
+    p.alignment = PP_ALIGN.CENTER
+    set_font(p.font, 54, True, RGBColor(255, 255, 255))
+    
+    sub = slide.shapes.add_textbox(Inches(1), Inches(4), Inches(11), Inches(1))
+    p = sub.text_frame.add_paragraph()
+    p.text = txt["ppt_cover_sub"]
+    p.alignment = PP_ALIGN.CENTER
+    set_font(p_sub.font, 24, False, RGBColor(200, 200, 200))
+
+    # Slides
+    for issue in slides_data:
+        slide = prs.slides.add_slide(prs.slide_layouts[6])
+        
+        h_shape = slide.shapes.add_shape(1, 0, 0, Inches(13.333), Inches(1.2))
+        h_shape.fill.solid()
+        h_shape.fill.fore_color.rgb = RGBColor(240, 242, 246)
+        
+        h_box = slide.shapes.add_textbox(Inches(0.5), Inches(0.3), Inches(10), Inches(0.8))
+        p = h_box.text_frame.add_paragraph()
+        p.text = issue['title']
+        set_font(p.font, 32, True, RGBColor(50, 50, 50))
+        
+        sev_color = RGBColor(220, 53, 69) if issue['severity'] == "Critical" else RGBColor(253, 126, 20)
+        sev_box = slide.shapes.add_textbox(Inches(11), Inches(0.35), Inches(2), Inches(0.5))
+        p = sev_box.text_frame.add_paragraph()
+        p.text = f"{issue['severity']}"
+        p.alignment = PP_ALIGN.CENTER
+        set_font(p.font, 18, True, sev_color)
+        
+        d_title = slide.shapes.add_textbox(Inches(0.5), Inches(1.5), Inches(6), Inches(0.5))
+        p = d_title.text_frame.add_paragraph()
+        p.text = txt["ppt_slide_desc_title"]
+        set_font(p.font, 18, True, RGBColor(30, 30, 30))
+        
+        d_box = slide.shapes.add_textbox(Inches(0.5), Inches(2.0), Inches(6), Inches(2.5))
+        tf = d_box.text_frame
+        tf.word_wrap = True
+        tf.auto_size = MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE
+        p = tf.add_paragraph()
+        p.text = issue['desc']
+        set_font(p.font, 14, False, RGBColor(80, 80, 80))
+        
+        c_box = slide.shapes.add_textbox(Inches(0.5), Inches(3.5), Inches(6), Inches(0.5))
+        p = c_box.text_frame.add_paragraph()
+        p.text = txt["ppt_slide_count_title"].format(issue['count'])
+        set_font(p.font, 14, True, RGBColor(100, 100, 100))
+
+        is_serp = any(k in issue['title'] for k in ["Title", "标题", "Meta", "元描述"])
+        ev = issue.get('example_evidence', '')
+        ex_url = issue['examples'][0] if issue['examples'] else "example.com"
+        
+        if is_serp:
+            draw_serp_preview(slide, issue['title'], ev, ex_url)
+        else:
+            e_title = slide.shapes.add_textbox(Inches(7), Inches(1.5), Inches(5.8), Inches(0.5))
+            p = e_title.text_frame.add_paragraph()
+            p.text = txt["ppt_slide_ex_title"]
+            set_font(p.font, 18, True, RGBColor(30, 30, 30))
+            
+            e_box = slide.shapes.add_textbox(Inches(7), Inches(2.0), Inches(5.8), Inches(2.5))
+            tf = e_box.text_frame
+            tf.word_wrap = True
+            tf.auto_size = MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE
+            for url in issue['examples'][:5]:
+                p = tf.add_paragraph()
+                p.text = f"• {url}"
+                set_font(p.font, 12, False, RGBColor(0, 102, 204))
+                p.space_after = Pt(6)
+
+        s_bg = slide.shapes.add_shape(1, Inches(0.5), Inches(5.8), Inches(12.333), Inches(1.5))
+        s_bg.fill.solid()
+        s_bg.fill.fore_color.rgb = RGBColor(230, 244, 234)
+        s_bg.line.color.rgb = RGBColor(40, 167, 69)
+        
+        s_box = slide.shapes.add_textbox(Inches(0.7), Inches(5.9), Inches(11.9), Inches(1.3))
+        tf = s_box.text_frame
+        tf.word_wrap = True
+        tf.auto_size = MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE
+        p = tf.add_paragraph()
+        p.text = txt["ppt_slide_sugg_title"]
+        set_font(p.font, 16, True, RGBColor(21, 87, 36))
+        p = tf.add_paragraph()
+        p.text = issue['suggestion']
+        set_font(p.font, 14, False, RGBColor(21, 87, 36))
+        p.space_before = Pt(5)
+
+    out = BytesIO()
+    prs.save(out)
+    out.seek(0)
+    return out
+
+# --- 4. Init Session ---
+if 'audit_data' not in st.session_state: st.session_state['audit_data'] = None
+if 'audit_issues' not in st.session_state: st.session_state['audit_issues'] = []
+if 'language' not in st.session_state: st.session_state['language'] = "zh" 
+if 'sitemap_hreflang_found' not in st.session_state: st.session_state['sitemap_hreflang_found'] = False
+if 'cwv_data' not in st.session_state: st.session_state['cwv_data'] = None
+
+# --- 5. Sidebar ---
+lang = st.session_state['language']
+ui = TRANSLATIONS[lang]
+
+with st.sidebar:
+    st.title(ui["sidebar_title"])
+    st.caption(ui["sidebar_caption"])
+    
+    st.divider()
+    selected_lang = st.radio(ui["lang_label"], ["中文", "English"], index=0 if lang=="zh" else 1)
+    new_lang = "zh" if selected_lang == "中文" else "en"
+    if new_lang != lang:
+        st.session_state['language'] = new_lang
+        st.rerun()
+    
+    st.divider()
+    menu_options = ui["nav_options"]
+    menu_map = {ui["nav_options"][i]: ["input", "dashboard", "matrix", "ppt"][i] for i in range(4)}
+    selected_menu = st.radio(ui["nav_label"], menu_options)
+    menu_key = menu_map[selected_menu]
+    
+    st.divider()
+    if st.session_state['audit_data'] is not None:
+        st.success(ui["cache_info"].format(len(st.session_state['audit_data'])))
+        st.markdown(f"**{ui['sitemap_status_title']}**")
+        if st.session_state['sitemap_hreflang_found']: st.caption(ui["sitemap_found_href"])
+        else: st.caption(ui["sitemap_no_href"])
+        if st.button(ui["clear_data"]):
+            st.session_state['audit_data'] = None
+            st.session_state['audit_issues'] = []
+            st.session_state['sitemap_hreflang_found'] = False
+            st.session_state['cwv_data'] = None
+            st.rerun()
+
+# --- 6. Main Logic ---
+if menu_key == "input":
+    st.header(ui["input_header"])
+    st.info(ui["input_info"])
+    
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        url_input = st.text_input(ui["input_label"], placeholder=ui["input_placeholder"])
+    with col2:
+        max_pages = st.number_input(ui.get("max_pages_label", "Max Pages"), min_value=1, max_value=1000, value=100)
+    
+    with st.expander(ui.get("adv_settings", "Advanced")):
+        manual_robots = st.text_input(ui.get("manual_robots", "Manual Robots.txt"), placeholder="https://example.com/robots.txt")
+        manual_sitemaps_text = st.text_area(ui.get("manual_sitemaps", "Manual Sitemaps"), placeholder="https://example.com/sitemap.xml")
+        manual_sitemaps = [s.strip() for s in manual_sitemaps_text.split('\n') if s.strip()]
+    
+    with st.expander(ui.get("psi_settings", "Google PSI")):
+        psi_key = st.text_input(ui.get("psi_api_key_label", "API Key"), type="password", help=ui.get("psi_api_help", ""))
+        st.caption(ui["psi_get_key"])
+
+    start_btn = st.button(ui["start_btn"], type="primary", use_container_width=True)
+    
+    if start_btn and url_input:
+        if not is_valid_url(url_input):
+            st.error(ui["error_url"])
+        else:
+            with st.spinner(ui["spinner_crawl"].format(max_pages)):
+                data, issues = crawl_website(url_input, max_pages, lang, manual_robots, manual_sitemaps, psi_key)
+                if not data:
+                    st.error(ui["error_no_data"])
+                else:
+                    st.session_state['audit_data'] = data
+                    st.session_state['audit_issues'] = issues
+                    st.success(ui["success_audit"].format(len(data)))
+                    st.balloons()
+
+elif menu_key == "dashboard":
+    st.header(ui["dashboard_header"])
+    if st.session_state['audit_data'] is None:
+        st.warning(ui["warn_no_data"])
+    else:
+        if st.session_state.get('cwv_data'):
+            cwv = st.session_state['cwv_data']
+            st.subheader(ui["cwv_title"])
+            st.caption(ui["cwv_source"])
+            c1, c2, c3, c4 = st.columns(4)
+            def metric_color(val, good, poor):
+                if val <= good: return "normal"
+                if val >= poor: return "inverse"
+                return "off"
+            c1.metric("LCP (Loading)", f"{cwv.get('LCP',0):.2f}s", delta_color=metric_color(cwv.get('LCP',0), 2.5, 4.0))
+            c2.metric("CLS (Visual)", f"{cwv.get('CLS',0):.3f}", delta_color=metric_color(cwv.get('CLS',0), 0.1, 0.25))
+            c3.metric("INP (Interact)", f"{cwv.get('INP',0)}ms", delta_color=metric_color(cwv.get('INP',0), 200, 500))
+            c4.metric("FCP", f"{cwv.get('FCP',0):.2f}s")
+            st.divider()
+
+        df = pd.DataFrame(st.session_state['audit_data'])
+        issues = st.session_state['audit_issues']
+        total = len(issues)
+        score = max(0, 100 - int(total * 0.5))
+        critical = len([i for i in issues if i['severity'] == 'Critical'])
+        
+        k1, k2, k3, k4 = st.columns(4)
+        k1.metric(ui["kpi_health"], f"{score}/100")
+        k2.metric(ui["kpi_pages"], str(len(df)))
+        k3.metric(ui["kpi_issues"], str(total), delta_color="inverse")
+        k4.metric(ui["kpi_critical"], str(critical), delta_color="inverse")
+        
+        st.divider()
+        c1, c2 = st.columns(2)
+        with c1:
+            st.subheader(ui["chart_issues"])
+            if issues: st.bar_chart(pd.DataFrame(issues)['title'].value_counts())
+            else: st.info(ui["chart_no_issues"])
+        with c2:
+            st.subheader(ui["chart_status"])
+            if not df.empty: st.bar_chart(df['Status'].value_counts())
+
+elif menu_key == "matrix":
+    st.header(ui["matrix_header"])
+    if st.session_state['audit_data'] is None:
+        st.warning(ui["warn_no_data"])
+    else:
+        df = pd.DataFrame(st.session_state['audit_data'])
+        st.dataframe(df, use_container_width=True, hide_index=True)
+        csv = df.to_csv(index=False).encode('utf-8')
+        st.download_button(ui["download_csv"], csv, "audit_report.csv", "text/csv")
+
+elif menu_key == "ppt":
+    st.header(ui["ppt_header"])
+    if st.session_state['audit_data'] is None:
+        st.warning(ui["warn_no_data"])
+    elif not st.session_state['audit_issues']:
+        st.success(ui["ppt_success_no_issues"])
+    else:
+        raw_issues = st.session_state['audit_issues']
+        grouped = {}
+        for i in raw_issues:
+            t = i['title']
+            if t not in grouped:
+                grouped[t] = {
+                    "title": t, "severity": i['severity'], "desc": i['desc'], 
+                    "suggestion": i['suggestion'], "count": 0, "examples": [],
+                    "example_evidence": i.get("evidence", "")
+                }
+            grouped[t]['count'] += 1
+            if len(grouped[t]['examples']) < 5: grouped[t]['examples'].append(i['url'])
+        
+        sov_order = {"Critical": 0, "High": 1, "Medium": 2, "Low": 3}
+        slides = sorted(list(grouped.values()), key=lambda x: (sov_order.get(x['severity'], 3), -x['count']))
+
+        st.write(f"### {ui['ppt_download_header']}")
+        st.info(ui["ppt_info"])
+        if st.button(ui["ppt_btn"]):
+            with st.spinner("Generating..."):
+                pptx = create_styled_pptx(slides, lang=lang)
+                fname = f"seo_audit_report_{lang}.pptx"
+                st.download_button(ui["ppt_btn"], pptx, fname, "application/vnd.openxmlformats-officedocument.presentationml.presentation")
+
+        st.divider()
+        st.subheader(ui["ppt_preview_header"])
+        
+        if 'slide_index' not in st.session_state: st.session_state.slide_index = 0
+        if st.session_state.slide_index >= len(slides): st.session_state.slide_index = 0
+        
+        s = slides[st.session_state.slide_index]
+        with st.container(border=True):
+            st.markdown(f"### {ui['ppt_slide_title']} {s['title']}")
+            c1, c2 = st.columns([1, 1])
+            with c1:
+                color = "red" if s['severity'] == "Critical" else "orange" if s['severity'] == "High" else "blue"
+                st.markdown(f"**{ui['ppt_severity']}** :{color}[{s['severity']}]")
+                st.markdown(f"**{ui['ppt_impact']}** {ui['ppt_impact_desc'].format(s['count'])}")
+                st.markdown(f"**{ui['ppt_desc']}** {s['desc']}")
+                st.info(f"{ui['ppt_sugg']} {s['suggestion']}")
+            with c2:
+                is_serp = any(k in s['title'] for k in ["Title", "标题", "Meta", "元描述"])
+                if is_serp:
+                    st.markdown(f"**{ui.get('serp_sim_title', 'SERP Preview')}**")
+                    ev = s.get('example_evidence', '')
+                    ex_url = s['examples'][0] if s['examples'] else "example.com"
+                    display_title = ev if ev else "Untitled Page"
+                    if len(display_title) > 60: display_title = display_title[:55] + " ..."
+                    st.markdown(f"""
+                    <div style="font-family: Arial, sans-serif; border: 1px solid #dfe1e5; border-radius: 8px; padding: 15px; background: white; box-shadow: 0 1px 6px rgba(32,33,36,0.28);">
+                        <div style="font-size: 14px; color: #202124;">{urlparse(ex_url).netloc} <span style="color: #5f6368">› ...</span></div>
+                        <div style="font-size: 20px; color: #1a0dab; margin-top: 5px;">{display_title}</div>
+                        <div style="font-size: 14px; color: #4d5156; margin-top: 3px;">
+                            Please provide a meta description...
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.markdown(f"**{ui['ppt_examples']}**")
+                    for ex in s['examples']: st.markdown(f"- `{ex}`")
+
+        cp, ct, cn = st.columns([1, 2, 1])
+        with cp:
+            if st.button(ui["ppt_prev"]):
+                st.session_state.slide_index = max(0, st.session_state.slide_index - 1)
+                st.rerun()
+        with ct:
+            st.markdown(f"<div style='text-align: center'>Slide {st.session_state.slide_index + 1} / {len(slides)}</div>", unsafe_allow_html=True)
+        with cn:
+            if st.button(ui["ppt_next"]):
+                st.session_state.slide_index = min(len(slides) - 1, st.session_state.slide_index + 1)
+                st.rerun()
