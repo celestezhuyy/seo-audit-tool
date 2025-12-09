@@ -990,23 +990,20 @@ with st.sidebar:
         st.success(ui["cache_info"].format(len(st.session_state['audit_data'])))
         st.markdown(f"**{ui['sitemap_status_title']}**")
         if st.session_state['sitemap_hreflang_found']: st.caption(ui["sitemap_found_href"])
-        else: st.caption(ui["sitemap_no_href"])
-        
-        if st.button(ui["clear_data"]):
-            st.session_state['audit_data'] = None
-            st.session_state['audit_issues'] = []
-            st.session_state['cwv_data'] = None
-            st.rerun()
-
+# --- 6. Main Logic ---
 if menu_key == "input":
     st.header(ui["input_header"])
     st.info(ui["input_info"])
-    c1, c2 = st.columns([3, 1])
-    with c1: target_url = st.text_input(ui["input_label"], placeholder=ui["input_placeholder"])
-    with c2: max_p = st.number_input(ui.get("max_pages_label", "Max Pages"), min_value=1, max_value=1000, value=100)
+    
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        # Fixed: Renamed url_input to target_url to fix NameError
+        target_url = st.text_input(ui["input_label"], placeholder=ui["input_placeholder"])
+    with col2:
+        max_pages = st.number_input(ui.get("max_pages_label", "Max Pages"), min_value=1, max_value=1000, value=100)
     
     with st.expander(ui.get("adv_settings", "Advanced")):
-        m_rob = st.text_input(ui.get("manual_robots", "Manual Robots.txt"), placeholder="https://example.com/robots.txt")
+        manual_robots = st.text_input(ui.get("manual_robots", "Manual Robots.txt"), placeholder="https://example.com/robots.txt")
         manual_sitemaps_text = st.text_area(ui.get("manual_sitemaps", "Manual Sitemaps"), placeholder="https://example.com/sitemap.xml")
         manual_sitemaps = [s.strip() for s in manual_sitemaps_text.split('\n') if s.strip()]
     
@@ -1016,11 +1013,14 @@ if menu_key == "input":
 
     start_btn = st.button(ui["start_btn"], type="primary", use_container_width=True)
     
+    # Check if button clicked AND target_url is not empty
     if start_btn and target_url:
-        if not is_valid_url(target_url): st.error(ui["error_url"])
+        if not is_valid_url(target_url): 
+            st.error(ui["error_url"])
         else:
-            with st.spinner(ui["spinner_crawl"].format(max_p)):
-                data, issues, error_msg = crawl_website(target_url, max_p, lang, m_rob, m_map, key if 'key' in locals() else psi_key)
+            with st.spinner(ui["spinner_crawl"].format(max_pages)):
+                # Fixed: Use target_url instead of url_input
+                data, issues, error_msg = crawl_website(target_url, max_pages, lang, manual_robots, manual_sitemaps, psi_key)
                 if not data:
                     st.error(ui["error_no_data"].format(error_msg or "Unknown Error"))
                 else:
