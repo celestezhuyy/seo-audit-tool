@@ -160,8 +160,8 @@ TRANSLATIONS = {
         "no_robots": "缺失 Robots.txt", "no_robots_desc": "无法访问 robots.txt。", "no_robots_impact": "爬虫可能抓取无用页面，消耗服务器资源，且无法有效分配爬取预算。", "no_robots_sugg": "确保 robots.txt 文件存在且可公开访问。",
         "robots_bad_rule": "Robots.txt 封禁风险", "robots_desc": "检测到全站封禁规则。", "robots_impact": "导致网站无法被收录，流量直接归零。",
         "robots_no_sitemap": "Robots 未声明 Sitemap", "robots_no_sitemap_desc": "未指明 Sitemap 位置。", "robots_no_sitemap_impact": "发现页面变慢。",
-        "no_sitemap": "Sitemap 访问失败", "no_sitemap_desc": "无法访问 Sitemap 文件。", "no_sitemap_impact": "深层页面难发现。",
-        "sitemap_invalid": "Sitemap 格式错误", "sitemap_invalid_desc": "XML 解析失败。", "sitemap_invalid_impact": "Sitemap 失效。",
+        "no_sitemap": "Sitemap 访问失败", "no_sitemap_desc": "无法访问 Sitemap 文件。", "no_sitemap_impact": "搜索引擎难以发现深层页面，影响收录率。",
+        "sitemap_invalid": "Sitemap 格式错误", "sitemap_invalid_desc": "XML 解析失败，格式不符合标准。", "sitemap_invalid_impact": "搜索引擎无法读取链接，导致 Sitemap 失效。",
         "no_favicon": "缺失 Favicon", "no_favicon_desc": "首页无图标。", "no_favicon_impact": "降低 SERP 点击率。", "no_favicon_sugg": "配置 favicon。",
         "duplicate": "发现未规范化的重复内容", "duplicate_desc": "内容高度重复且 Canonical 未统一。", "duplicate_impact": "权重分散，关键词竞争。", "duplicate_sugg": "使用 Canonical 指向原件。",
         "3xx_title": "内部链接重定向 (3xx)", "3xx_desc": "链接发生跳转。", "3xx_impact": "浪费爬取预算。", "3xx_sugg": "更新链接。",
@@ -205,7 +205,7 @@ TRANSLATIONS = {
         # PSI Related
         "psi_settings": "Google PSI API Settings (Optional)",
         "psi_api_key_label": "Enter Google PageSpeed API Key",
-        "psi_api_help": "Leave empty for static check only.",
+        "psi_api_help": "Leave empty for static check only. Enter Key to fetch Real User Metrics (LCP, CLS, INP) for the home page.",
         "psi_get_key": "No API Key? [Get one for free here](https://developers.google.com/speed/docs/insights/v5/get-started)",
         "psi_fetching": "Fetching real CWV data...",
         "psi_success": "Real user data fetched!",
@@ -252,6 +252,7 @@ TRANSLATIONS = {
         "ppt_impact": "Impact:",
         "ppt_impact_desc": "Affects **{}** pages in crawled sample.",
         "ppt_desc": "Description:",
+        "ppt_business_impact": "📉 Business & SEO Impact:",
         "ppt_sugg": "💡 Suggestion:",
         "ppt_examples": "🔍 Examples:",
         "ppt_prev": "⬅️ Previous",
@@ -783,6 +784,7 @@ def create_styled_pptx(slides_data, lang="zh"):
     for issue in slides_data:
         slide = prs.slides.add_slide(prs.slide_layouts[6])
         
+        # Header
         h_shape = slide.shapes.add_shape(1, 0, 0, Inches(13.333), Inches(1.2))
         h_shape.fill.solid()
         h_shape.fill.fore_color.rgb = RGBColor(240, 242, 246)
