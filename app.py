@@ -36,7 +36,7 @@ st.set_page_config(
 TRANSLATIONS = {
     "zh": {
         "sidebar_title": "🔍 AuditAI Pro",
-        "sidebar_caption": "深度审计版 v3.4",
+        "sidebar_caption": "深度审计版 v3.4.1",
         "nav_label": "功能导航",
         "nav_options": ["输入网址", "仪表盘", "数据矩阵", "PPT 生成器"],
         "lang_label": "语言 / Language",
@@ -111,7 +111,7 @@ TRANSLATIONS = {
     },
     "en": {
         "sidebar_title": "🔍 AuditAI Pro",
-        "sidebar_caption": "Deep Audit Edition v3.4",
+        "sidebar_caption": "Deep Audit Edition v3.4.1",
         "nav_label": "Navigation",
         "nav_options": ["Input URL", "Dashboard", "Data Matrix", "PPT Generator"],
         "lang_label": "Language / 语言",
@@ -287,13 +287,15 @@ def check_site_level_assets(start_url, lang="zh", manual_robots=None, manual_sit
         try:
             r = requests.get(sitemap_url, headers=headers, timeout=15, allow_redirects=True, verify=False)
             if r.status_code == 200:
+                # 尝试解析 XML
                 try:
                     root = ET.fromstring(r.content)
                     any_sitemap_valid = True
+                    # 检查 hreflang
                     if 'xhtml' in r.text or 'hreflang' in r.text:
                         sitemap_has_hreflang = True
                 except ET.ParseError:
-                    if not sitemap_url.endswith('.gz'): 
+                    if not sitemap_url.endswith('.gz'): # 忽略压缩格式报错
                         issues.append({"severity": "Medium", "title": t["sitemap_invalid"], "desc": "XML parsing failed.", "suggestion": "Check XML syntax.", "url": sitemap_url})
             else:
                 if manual_sitemaps:
@@ -670,7 +672,7 @@ def create_styled_pptx(slides_data, lang="zh"):
     p = sub.text_frame.add_paragraph()
     p.text = txt["ppt_cover_sub"]
     p.alignment = PP_ALIGN.CENTER
-    set_font(p_sub.font, 24, False, RGBColor(200, 200, 200))
+    set_font(p.font, 24, False, RGBColor(200, 200, 200)) # Fixed p_sub -> p
 
     # Slides
     for issue in slides_data:
