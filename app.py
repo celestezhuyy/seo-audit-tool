@@ -62,7 +62,7 @@ def get_issue_priority(issue_id):
 TRANSLATIONS = {
     "zh": {
         "sidebar_title": "🔍 AuditAI Pro",
-        "sidebar_caption": "旗舰审计版 v5.9 (Final)",
+        "sidebar_caption": "旗舰审计版 v5.9 (Stable)",
         "nav_label": "功能导航",
         "nav_options": ["输入网址", "仪表盘", "数据矩阵", "PPT 生成器"],
         "lang_label": "语言 / Language",
@@ -157,11 +157,11 @@ TRANSLATIONS = {
         "sitemap_invalid": "Sitemap 格式错误", "sitemap_invalid_desc": "XML 解析失败，文件格式不符合标准协议。", "sitemap_invalid_impact": "搜索引擎无法读取其中的链接，导致 Sitemap 完全失效。", "sitemap_invalid_sugg": "使用 XML 验证工具检查文件语法，确保没有未闭合的标签或非法字符。",
         "no_favicon": "缺失 Favicon", "no_favicon_desc": "未在首页检测到 Favicon 图标。", "no_favicon_impact": "降低品牌在浏览器标签页和搜索结果页 (SERP) 中的辨识度，进而导致点击率 (CTR) 下降。", "no_favicon_sugg": "制作一个 .ico 或 .png 格式的图标，并在 <head> 中通过 <link rel='icon'> 引用。",
         
-        "duplicate": "发现未规范化的重复内容", "duplicate_desc": "内容高度重复且 Canonical 未统一。", "duplicate_impact": "导致关键词内部竞争 (Cannibalization)，分散页面权重，使所有相关页面都难以获得高排名。", "duplicate_sugg": "确定一个主 URL，并在所有副本页面上添加 rel='canonical' 指向该主 URL。",
+        "duplicate": "发现未规范化的重复内容", "duplicate_desc": "多个 URL 指向相同内容，且未通过 Canonical 标签指定唯一版本。", "duplicate_impact": "导致关键词内部竞争 (Cannibalization)，分散页面权重，使所有相关页面都难以获得高排名。", "duplicate_sugg": "确定一个主 URL，并在所有副本页面上添加 rel='canonical' 指向该主 URL。",
         
-        "http_3xx": "内部链接重定向 (3xx)", "http_3xx_desc": "内部链接指向了一个发生 301 或 302 跳转的地址。", "http_3xx_impact": "浪费爬虫预算，增加页面加载延迟，且每次跳转都会损耗少量链接传递的权重 (Link Equity)。", "http_3xx_sugg": "批量更新内部链接，使其直接指向最终的目标 URL，避免中间跳转。",
-        "http_4xx": "死链/客户端错误 (4xx)", "http_4xx_desc": "内部链接返回 404 (未找到) 或 403 (禁止访问) 错误。", "http_4xx_impact": "严重破坏用户体验，中断权重传递路径，并可能导致已索引的页面被 Google 移除。", "http_4xx_sugg": "移除死链，或者将其重定向到最相关的有效页面。",
-        "http_5xx": "服务器错误 (5xx)", "http_5xx_desc": "服务器响应 500/502/503 等内部错误。", "http_5xx_impact": "表明服务器极其不稳定，Googlebot 会因此降低对该站点的爬取频率以减轻负载。", "http_5xx_sugg": "检查服务器错误日志，优化数据库查询或升级服务器配置。",
+        "3xx_title": "内部链接重定向 (3xx)", "3xx_desc": "内部链接指向了一个发生 301 或 302 跳转的地址。", "3xx_impact": "浪费爬虫预算，增加页面加载延迟，且每次跳转都会损耗少量链接传递的权重 (Link Equity)。", "3xx_sugg": "批量更新内部链接，使其直接指向最终的目标 URL，避免中间跳转。",
+        "4xx_title": "死链/客户端错误 (4xx)", "4xx_desc": "内部链接返回 404 (未找到) 或 403 (禁止访问) 错误。", "4xx_impact": "严重破坏用户体验，中断权重传递路径，并可能导致已索引的页面被 Google 移除。", "4xx_sugg": "移除死链，或者将其重定向到最相关的有效页面。",
+        "5xx_title": "服务器错误 (5xx)", "5xx_desc": "服务器响应 500/502/503 等内部错误。", "5xx_impact": "表明服务器极其不稳定，Googlebot 会因此降低对该站点的爬取频率以减轻负载。", "5xx_sugg": "检查服务器错误日志，优化数据库查询或升级服务器配置。",
 
         "hreflang_invalid": "Hreflang 格式错误", "hreflang_invalid_desc": "语言代码不符合 ISO 639-1 标准 (如使用了错误的代码格式)。", "hreflang_invalid_impact": "Google 无法识别目标语言，导致国际化定位失效，不同地区用户可能看到错误的语言页面。", "hreflang_invalid_sugg": "使用标准的 ISO 语言代码 (例如 'en-US' 而不是 'en_US')。",
         "hreflang_no_default": "Hreflang 缺失 x-default", "hreflang_no_default_desc": "未配置 'x-default' 回退版本。", "hreflang_no_default_impact": "当用户来自未指定的语言/地区时，可能无法自动匹配到最合适的通用版本（通常是英语）。", "hreflang_no_default_sugg": "添加 hreflang='x-default' 标签，指定默认的语言版本。",
@@ -180,8 +180,7 @@ TRANSLATIONS = {
         "missing_viewport": "缺失移动端视口配置", "missing_viewport_desc": "未配置 <meta name='viewport'> 标签。", "missing_viewport_impact": "在移动设备上显示异常（字体极小）。Google 移动优先索引会严重惩罚此类页面。", "missing_viewport_sugg": "在 <head> 中添加标准的 viewport meta 标签。",
         "missing_canonical": "缺失 Canonical 标签", "missing_canonical_desc": "未指定规范链接。", "missing_canonical_impact": "无法应对 URL 参数（如 ?id=1）导致的重复内容问题，容易造成权重稀释。", "missing_canonical_sugg": "在所有页面添加自引用（Self-referencing）或指向原件的 Canonical 标签。",
         
-        "missing_jsonld": "缺失结构化数据", "missing_jsonld_desc": "未检测到 Schema.org 标记。", "missing_jsonld_impact": "错失富媒体搜索结果（Rich Results），在 SERP 中不如竞争对手显眼。", 
-        "missing_jsonld_sugg": "检测到页面类型可能为：{}。建议添加对应的 JSON-LD Schema。",
+        "missing_jsonld": "缺失结构化数据", "missing_jsonld_desc": "未检测到 Schema.org 标记。", "missing_jsonld_impact": "错失富媒体搜索结果（Rich Results），在 SERP 中不如竞争对手显眼。", "missing_jsonld_sugg": "检测到页面类型可能为：{}。建议添加对应的 JSON-LD Schema。",
         
         "soft_404": "疑似软 404 (Soft 404)", "soft_404_desc": "页面返回 200 状态码但内容显示“未找到”。", "soft_404_impact": "严重浪费爬虫预算，导致无效页面挤占有效页面的索引名额。", "soft_404_sugg": "配置服务器对不存在的页面返回 404 HTTP 状态码。",
         "missing_alt": "图片缺失 Alt 属性", "missing_alt_desc": "图片标签缺少 alt 属性。", "missing_alt_impact": "搜索引擎无法理解图片内容，错失图片搜索流量。", "missing_alt_sugg": "为所有有意义的图片添加描述性的 alt 属性。",
@@ -259,12 +258,12 @@ TRANSLATIONS = {
         "ppt_next": "Next ➡️",
         
         # Categories
-        "cat_access": "Access & Indexing",
-        "cat_indexability": "Indexability",
-        "cat_technical": "Technical SEO",
-        "cat_content": "On-Page Content",
-        "cat_image_ux": "UX & Assets",
-        "cat_cwv_performance": "Core Web Vitals (Performance)",
+        "cat_access": "1. Access & Indexing",
+        "cat_indexability": "2. Indexability",
+        "cat_technical": "3. Technical SEO",
+        "cat_content": "4. On-Page Content",
+        "cat_image_ux": "5. UX & Assets",
+        "cat_cwv_performance": "6. Core Web Vitals (Performance)",
         
         "ppt_cover_title": "SEO Technical Audit",
         "ppt_cover_sub": "Generated by AuditAI Pro v5.9",
@@ -298,10 +297,10 @@ TRANSLATIONS = {
         
         "hreflang_invalid": "Invalid Hreflang", "hreflang_invalid_desc": "The language code format does not comply with ISO 639-1 standards.", "hreflang_invalid_impact": "Google cannot identify the target language, causing international targeting to fail.", "hreflang_invalid_sugg": "Use standard ISO codes (e.g., 'en-US' instead of 'en_US').",
         "hreflang_no_default": "No x-default", "hreflang_no_default_desc": "Missing 'x-default' fallback attribute.", "hreflang_no_default_impact": "Users from unspecified regions may be served the wrong language version.", "hreflang_no_default_sugg": "Add an hreflang='x-default' tag to specify the default version.",
+        "missing_hreflang": "No Hreflang", "missing_hreflang_desc": "No language targeting tags found.", "missing_hreflang_impact": "Poor international targeting.", "missing_hreflang_sugg": "Add hreflang tags.",
         
         "alt_bad_quality": "Bad Alt Text", "alt_bad_quality_desc": "Alt text uses filenames or generic words like 'image'.", "alt_bad_quality_impact": "Search engines cannot understand the image context, hurting Image SEO and accessibility.", "alt_bad_quality_sugg": "Use descriptive text that accurately describes the image content.",
         "anchor_bad_quality": "Bad Anchor", "anchor_bad_quality_desc": "Generic anchor text found (e.g., 'Click here').", "anchor_bad_quality_impact": "Fails to pass keyword relevance to the target page, reducing its ranking potential.", "anchor_bad_quality_sugg": "Use descriptive keywords in the anchor text.",
-        
         "cls_risk": "CLS Risk (Static)", "cls_risk_desc": "Images missing width or height attributes detected.", "cls_risk_impact": "Images will push content down as they load, causing layout shifts and hurting Core Web Vitals.", "cls_risk_sugg": "Explicitly set width and height attributes on all image tags.",
         
         "missing_title": "Missing Title", "missing_title_desc": "No <title> tag found in the page code.", "missing_title_impact": "Title is the most important on-page SEO factor. Missing it causes severe ranking loss.", "missing_title_sugg": "Add a unique, keyword-rich title to every page.",
@@ -314,7 +313,6 @@ TRANSLATIONS = {
         "missing_canonical": "No Canonical", "missing_canonical_desc": "Missing canonical tag.", "missing_canonical_impact": "High risk of duplicate content issues, especially with URL parameters.", "missing_canonical_sugg": "Add a self-referencing canonical tag to all pages.",
         "missing_jsonld": "No Schema", "missing_jsonld_desc": "No JSON-LD structured data found.", "missing_jsonld_impact": "Missed opportunity for Rich Snippets (e.g., Stars, Price) which boost CTR.", 
         "missing_jsonld_sugg": "Detected page type: {}. Add corresponding JSON-LD Schema.",
-        "missing_hreflang": "No Hreflang", "missing_hreflang_desc": "No language targeting tags found.", "missing_hreflang_impact": "Search engines may show the wrong language version to international users.", "missing_hreflang_sugg": "Add hreflang tags to the HTML head or Sitemap.",
         "soft_404": "Soft 404", "soft_404_desc": "Page returns a 200 OK status but displays an error message.", "soft_404_impact": "Wastes crawl budget on invalid pages and confuses search engines.", "soft_404_sugg": "Configure the server to return a 404 Not Found status code.",
         "missing_alt": "Missing Alt", "missing_alt_desc": "Images lack alternative text attributes.", "missing_alt_impact": "Bad for accessibility and prevents images from ranking in Image Search.", "missing_alt_sugg": "Add descriptive alt text to all relevant images.",
         "js_links": "JS Links", "js_links_desc": "Uncrawlable JavaScript links found.", "js_links_impact": "Search engines cannot follow these links, leaving pages orphaned.", "js_links_sugg": "Replace with standard <a href> tags.",
@@ -880,14 +878,23 @@ with st.sidebar:
         if st.button(ui["clear_data"]):
             st.session_state['audit_data'] = None
             st.session_state['audit_issues'] = []
+            st.session_state['cwv_data'] = None
+            st.rerun()
+
 # --- 6. Main Logic ---
+# 变量预初始化，防止 NameError
+target_url = None
+max_pages = 100
+manual_robots = None
+manual_sitemaps = []
+psi_key = None
+
 if menu_key == "input":
     st.header(ui["input_header"])
     st.info(ui["input_info"])
     
     col1, col2 = st.columns([3, 1])
     with col1:
-        # Fixed: Renamed variable to target_url to match downstream logic
         target_url = st.text_input(ui["input_label"], placeholder=ui["input_placeholder"])
     with col2:
         max_pages = st.number_input(ui.get("max_pages_label", "Max Pages"), min_value=1, max_value=1000, value=100)
@@ -903,7 +910,6 @@ if menu_key == "input":
 
     start_btn = st.button(ui["start_btn"], type="primary", use_container_width=True)
     
-    # Fixed: Updated condition to use target_url
     if start_btn and target_url:
         if not is_valid_url(target_url): st.error(ui["error_url"])
         else:
@@ -953,7 +959,6 @@ elif menu_key == "dashboard":
         with c1:
             st.subheader(ui["chart_issues"])
             if issues:
-                # Dynamically translate IDs for chart labels
                 issue_counts = pd.DataFrame(issues)['id'].value_counts().reset_index()
                 issue_counts.columns = ['id', 'count']
                 issue_counts['name'] = issue_counts['id'].apply(lambda x: get_translated_text(x, lang)['title'])
