@@ -36,7 +36,7 @@ st.set_page_config(
 TRANSLATIONS = {
     "zh": {
         "sidebar_title": "🔍 AuditAI Pro",
-        "sidebar_caption": "深度审计版 v3.3",
+        "sidebar_caption": "深度审计版 v3.3.1",
         "nav_label": "功能导航",
         "nav_options": ["输入网址", "仪表盘", "数据矩阵", "PPT 生成器"],
         "lang_label": "语言 / Language",
@@ -64,7 +64,7 @@ TRANSLATIONS = {
         "start_btn": "开始深度爬取",
         "error_url": "网址格式错误",
         "spinner_crawl": "正在执行深度审计 (Max {} pages)...", 
-        "error_no_data": "未能爬取到任何页面。原因: {}", # Update
+        "error_no_data": "未能爬取到任何页面。原因: {}", 
         "success_audit": "审计完成！共分析 {} 个页面。",
         
         "dashboard_header": "执行摘要 (Executive Summary)",
@@ -108,7 +108,7 @@ TRANSLATIONS = {
     },
     "en": {
         "sidebar_title": "🔍 AuditAI Pro",
-        "sidebar_caption": "Deep Audit Edition v3.3",
+        "sidebar_caption": "Deep Audit Edition v3.3.1",
         "nav_label": "Navigation",
         "nav_options": ["Input URL", "Dashboard", "Data Matrix", "PPT Generator"],
         "lang_label": "Language / 语言",
@@ -136,7 +136,7 @@ TRANSLATIONS = {
         "start_btn": "Start Deep Crawl",
         "error_url": "Invalid URL format",
         "spinner_crawl": "Running Deep Audit (Max {} pages)...", 
-        "error_no_data": "No pages crawled. Reason: {}", # Update
+        "error_no_data": "No pages crawled. Reason: {}", 
         "success_audit": "Audit Complete! Analyzed {} pages.",
         
         "dashboard_header": "Executive Summary",
@@ -315,7 +315,7 @@ def analyze_page(url, html_content, status_code, lang="zh", sitemap_has_hreflang
     soup = BeautifulSoup(html_content, 'html.parser')
     issues = []
     
-    # 语言包
+    # 语言包 - 包含所有检查项
     txt = {
         "zh": {
             "hreflang_invalid": "Hreflang 代码格式错误",
@@ -328,13 +328,22 @@ def analyze_page(url, html_content, status_code, lang="zh", sitemap_has_hreflang
             "anchor_bad_quality_desc": "使用了通用词汇（如 'Click here'），无法传递链接相关性。",
             "cls_risk": "存在 CLS 布局偏移风险 (CWV)",
             "cls_risk_desc": "检测到 img 标签缺失 width 或 height 属性，会导致页面加载时抖动。",
-            # ... (Existing keys)
-            "missing_title": "缺失页面标题 (Title)", "short_title": "标题过短", "long_title": "标题过长",
-            "missing_desc": "缺失元描述", "short_desc": "元描述过短", "missing_h1": "缺失 H1 标签",
-            "missing_viewport": "缺失移动端视口配置", "missing_canonical": "缺失 Canonical 标签",
-            "missing_jsonld": "缺失结构化数据", "missing_hreflang": "缺失 Hreflang",
-            "soft_404": "疑似软 404 (Soft 404)", "missing_alt": "图片缺失 Alt 属性",
-            "duplicate": "发现重复内容"
+            "missing_title": "缺失页面标题 (Title)", "missing_title_desc": "页面没有 <title> 标签。搜索引擎无法抓取页面主题，严重影响关键词排名。", "missing_title_sugg": "添加描述性标题。",
+            "short_title": "标题过短", "short_title_desc": "标题过短，难以覆盖核心关键词。", "short_title_sugg": "扩充标题长度。",
+            "long_title": "标题过长", "long_title_desc": "标题过长，可能在搜索结果中被截断。", "long_title_sugg": "精简标题长度。",
+            "missing_desc": "缺失元描述", "missing_desc_desc": "缺失 Meta Description。影响点击率。", "missing_desc_sugg": "添加 Meta Description。",
+            "short_desc": "元描述过短", "short_desc_desc": "内容过少，吸引力不足。", "short_desc_sugg": "扩充描述内容。",
+            "missing_h1": "缺失 H1 标签", "missing_h1_desc": "页面缺乏 H1 主标题。影响内容层级理解。", "missing_h1_sugg": "添加唯一的 H1 标签。",
+            "missing_viewport": "缺失移动端视口配置", "missing_viewport_desc": "未配置 Viewport。影响移动端排名。", "missing_viewport_sugg": "添加 viewport meta 标签。",
+            "missing_canonical": "缺失 Canonical 标签", "missing_canonical_desc": "未指定规范链接。可能导致重复内容。", "missing_canonical_sugg": "添加 canonical 标签。",
+            "missing_jsonld": "缺失结构化数据", "missing_jsonld_desc": "未检测到 Schema 标记。错失富媒体结果。", "missing_jsonld_sugg": "根据页面类型添加 JSON-LD。",
+            "missing_hreflang": "缺失 Hreflang", "missing_hreflang_desc": "未发现语言区域标记（HTML/Sitemap）。", "missing_hreflang_sugg": "添加 hreflang 标签。",
+            "soft_404": "疑似软 404 (Soft 404)", "soft_404_desc": "页面返回 200 但内容显示未找到。浪费爬取预算。", "soft_404_sugg": "配置 404 状态码。",
+            "missing_alt": "图片缺失 Alt 属性", "missing_alt_desc": "图片缺少替代文本。影响图片搜索。", "missing_alt_sugg": "添加 alt 属性。",
+            "duplicate": "发现重复内容", "duplicate_desc": "内容高度重复。导致关键词竞争。", "duplicate_sugg": "使用 Canonical 或合并。",
+            "js_links": "发现 JS 伪链接", "js_links_desc": "href='javascript:' 爬虫无法抓取。", "js_links_sugg": "使用标准链接。",
+            "url_underscore": "URL 包含下划线", "url_underscore_desc": "建议使用连字符。", "url_underscore_sugg": "优化 URL 结构。",
+            "url_uppercase": "URL 包含大写字母", "url_uppercase_desc": "建议使用小写。", "url_uppercase_sugg": "统一为小写 URL。"
         },
         "en": {
             "hreflang_invalid": "Invalid Hreflang Code",
@@ -347,13 +356,22 @@ def analyze_page(url, html_content, status_code, lang="zh", sitemap_has_hreflang
             "anchor_bad_quality_desc": "Generic text (e.g., 'Click here') found. Use descriptive text.",
             "cls_risk": "CLS Layout Shift Risk (CWV)",
             "cls_risk_desc": "Images missing width/height attributes, causing layout jumps.",
-            # ...
-            "missing_title": "Missing Title Tag", "short_title": "Title Too Short", "long_title": "Title Too Long",
-            "missing_desc": "Missing Meta Description", "short_desc": "Meta Description Too Short", "missing_h1": "Missing H1 Tag",
-            "missing_viewport": "Missing Mobile Viewport", "missing_canonical": "Missing Canonical Tag",
-            "missing_jsonld": "Missing Structured Data", "missing_hreflang": "Missing Hreflang",
-            "soft_404": "Suspected Soft 404", "missing_alt": "Images Missing Alt Text",
-            "duplicate": "Duplicate Content Detected"
+            "missing_title": "Missing Title Tag", "missing_title_desc": "Page has no <title> tag. Impacts ranking.", "missing_title_sugg": "Add descriptive title.",
+            "short_title": "Title Too Short", "short_title_desc": "Title is too short for keywords.", "short_title_sugg": "Increase length.",
+            "long_title": "Title Too Long", "long_title_desc": "Title may be truncated.", "long_title_sugg": "Shorten title.",
+            "missing_desc": "Missing Meta Description", "missing_desc_desc": "Missing description affects CTR.", "missing_desc_sugg": "Add description.",
+            "short_desc": "Meta Description Too Short", "short_desc_desc": "Content too thin.", "short_desc_sugg": "Expand description.",
+            "missing_h1": "Missing H1 Tag", "missing_h1_desc": "No main H1 heading.", "missing_h1_sugg": "Add unique H1.",
+            "missing_viewport": "Missing Mobile Viewport", "missing_viewport_desc": "No viewport tag. Hurts mobile ranking.", "missing_viewport_sugg": "Add viewport meta.",
+            "missing_canonical": "Missing Canonical Tag", "missing_canonical_desc": "Canonical URL not specified.", "missing_canonical_sugg": "Add canonical tag.",
+            "missing_jsonld": "Missing Structured Data", "missing_jsonld_desc": "No Schema markup found.", "missing_jsonld_sugg": "Add JSON-LD.",
+            "missing_hreflang": "Missing Hreflang", "missing_hreflang_desc": "No language targeting found.", "missing_hreflang_sugg": "Add hreflang.",
+            "soft_404": "Suspected Soft 404", "soft_404_desc": "Returns 200 but content says Not Found.", "soft_404_sugg": "Return 404 status.",
+            "missing_alt": "Images Missing Alt Text", "missing_alt_desc": "Images lack alt text.", "missing_alt_sugg": "Add alt attributes.",
+            "duplicate": "Duplicate Content", "duplicate_desc": "Content highly matches another page.", "duplicate_sugg": "Use canonicals.",
+            "js_links": "JavaScript Pseudo-links", "js_links_desc": "Crawlers cannot follow JS links.", "js_links_sugg": "Use standard links.",
+            "url_underscore": "URL Contains Underscores", "url_underscore_desc": "Hyphens preferred.", "url_underscore_sugg": "Use hyphens.",
+            "url_uppercase": "URL Contains Uppercase", "url_uppercase_desc": "URLs are case-sensitive.", "url_uppercase_sugg": "Use lowercase."
         }
     }
     t = txt[lang]
@@ -379,7 +397,7 @@ def analyze_page(url, html_content, status_code, lang="zh", sitemap_has_hreflang
         if not has_x_default:
             issues.append({"severity": "Low", "title": t["hreflang_no_default"], "desc": t["hreflang_no_default_desc"], "suggestion": "Add hreflang='x-default'.", "url": url})
     elif not sitemap_has_hreflang:
-        issues.append({"severity": "Low", "title": t["missing_hreflang"], "desc": "No hreflang in HTML or Sitemap.", "suggestion": "Add hreflang tags.", "url": url})
+        issues.append({"severity": "Low", "title": t["missing_hreflang"], "desc": t["missing_hreflang_desc"], "suggestion": t["missing_hreflang_sugg"], "url": url})
 
     # --- 2. 图片 Alt 质量检查 & CWV (CLS) ---
     images = soup.find_all('img')
@@ -400,7 +418,7 @@ def analyze_page(url, html_content, status_code, lang="zh", sitemap_has_hreflang
             cls_risk_count += 1
 
     if missing_alt > 0:
-        issues.append({"severity": "Medium", "title": t["missing_alt"], "desc": f"{missing_alt} images missing alt.", "suggestion": "Add descriptive alt text.", "url": url})
+        issues.append({"severity": "Medium", "title": t["missing_alt"], "desc": f"{missing_alt} {t['missing_alt_desc']}", "suggestion": t["missing_alt_sugg"], "url": url})
     if bad_alt_count > 0:
         issues.append({"severity": "Low", "title": t["alt_bad_quality"], "desc": t["alt_bad_quality_desc"], "suggestion": "Avoid generic keywords.", "url": url, "evidence": f"{bad_alt_count} poor alts"})
     if cls_risk_count > 0:
@@ -424,32 +442,45 @@ def analyze_page(url, html_content, status_code, lang="zh", sitemap_has_hreflang
     title_tag = soup.title
     title = title_tag.string.strip() if title_tag and title_tag.string else None
     if not title:
-        issues.append({"severity": "High", "title": t["missing_title"], "desc": "No title tag found.", "suggestion": "Add title tag.", "url": url})
+        issues.append({"severity": "High", "title": t["missing_title"], "desc": t["missing_title_desc"], "suggestion": t["missing_title_sugg"], "url": url})
     elif len(title) < 10:
-         issues.append({"severity": "Medium", "title": t["short_title"], "desc": "Title too short.", "suggestion": "Expand title.", "url": url, "evidence": title})
+         issues.append({"severity": "Medium", "title": t["short_title"], "desc": t["short_title_desc"], "suggestion": t["short_title_sugg"], "url": url, "evidence": title})
     elif len(title) > 60:
-         issues.append({"severity": "Low", "title": t["long_title"], "desc": "Title too long (>60 chars).", "suggestion": "Shorten title.", "url": url, "evidence": title})
+         issues.append({"severity": "Low", "title": t["long_title"], "desc": t["long_title_desc"], "suggestion": t["long_title_sugg"], "url": url, "evidence": title})
 
     meta_desc = soup.find('meta', attrs={'name': 'description'})
     desc_content = meta_desc['content'].strip() if meta_desc and meta_desc.get('content') else None
     if not desc_content:
-        issues.append({"severity": "High", "title": t["missing_desc"], "desc": "No meta description.", "suggestion": "Add meta description.", "url": url})
+        issues.append({"severity": "High", "title": t["missing_desc"], "desc": t["missing_desc_desc"], "suggestion": t["missing_desc_sugg"], "url": url})
     elif len(desc_content) < 50:
-        issues.append({"severity": "Low", "title": t["short_desc"], "desc": "Description too short.", "suggestion": "Expand description.", "url": url, "evidence": desc_content})
+        issues.append({"severity": "Low", "title": t["short_desc"], "desc": t["short_desc_desc"], "suggestion": t["short_desc_sugg"], "url": url, "evidence": desc_content})
 
     h1 = soup.find('h1')
-    if not h1: issues.append({"severity": "High", "title": t["missing_h1"], "desc": "No H1 tag.", "suggestion": "Add H1 tag.", "url": url})
+    if not h1: issues.append({"severity": "High", "title": t["missing_h1"], "desc": t["missing_h1_desc"], "suggestion": t["missing_h1_sugg"], "url": url})
 
     if not soup.find('meta', attrs={'name': 'viewport'}):
-        issues.append({"severity": "Critical", "title": t["missing_viewport"], "desc": "Mobile viewport missing.", "suggestion": "Add viewport meta.", "url": url})
+        issues.append({"severity": "Critical", "title": t["missing_viewport"], "desc": t["missing_viewport_desc"], "suggestion": t["missing_viewport_sugg"], "url": url})
 
     canonical_tag = soup.find('link', attrs={'rel': 'canonical'})
     canonical_url = canonical_tag['href'] if canonical_tag else None
     if not canonical_url:
-        issues.append({"severity": "Medium", "title": t["missing_canonical"], "desc": "Canonical tag missing.", "suggestion": "Add canonical tag.", "url": url})
+        issues.append({"severity": "Medium", "title": t["missing_canonical"], "desc": t["missing_canonical_desc"], "suggestion": t["missing_canonical_sugg"], "url": url})
 
     if not soup.find('script', type='application/ld+json'):
          issues.append({"severity": "Medium", "title": t["missing_jsonld"], "desc": t["missing_jsonld_desc"], "suggestion": t["missing_jsonld_sugg"], "url": url})
+
+    # URL Checks
+    parsed_url = urlparse(url)
+    path = parsed_url.path
+    if '_' in path:
+         issues.append({"severity": "Low", "title": t["url_underscore"], "desc": t["url_underscore_desc"], "suggestion": t["url_underscore_sugg"], "url": url})
+    if any(c.isupper() for c in path):
+         issues.append({"severity": "Medium", "title": t["url_uppercase"], "desc": t["url_uppercase_desc"], "suggestion": t["url_uppercase_sugg"], "url": url})
+
+    # JS Links
+    js_links = soup.find_all('a', href=lambda x: x and x.lower().startswith('javascript:'))
+    if js_links:
+        issues.append({"severity": "High", "title": t["js_links"], "desc": t["js_links_desc"], "suggestion": t["js_links_sugg"], "url": url, "meta": f"Count: {len(js_links)}"})
 
     if status_code == 200:
         error_kws = ["page not found", "404 error", "页面未找到"]
@@ -457,7 +488,7 @@ def analyze_page(url, html_content, status_code, lang="zh", sitemap_has_hreflang
         if title and any(k in title.lower() for k in error_kws): is_s404 = True
         elif soup.find('h1') and any(k in soup.find('h1').get_text().lower() for k in error_kws): is_s404 = True
         if is_s404:
-            issues.append({"severity": "Critical", "title": t["soft_404"], "desc": "Page looks like 404 but returns 200.", "suggestion": "Fix server headers.", "url": url})
+            issues.append({"severity": "Critical", "title": t["soft_404"], "desc": t["soft_404_desc"], "suggestion": t["soft_404_sugg"], "url": url})
 
     return {
         "URL": url, "Status": status_code, "Title": title or "No Title",
@@ -471,7 +502,7 @@ def crawl_website(start_url, max_pages=100, lang="zh", manual_robots=None, manua
     queue = [start_url]
     results_data = []
     all_issues = []
-    first_error = None # Track first failure
+    first_error = None
     
     t_dup_title = "Duplicate Content Detected" if lang == "en" else "发现重复内容"
     t_dup_desc = "Content matches another page." if lang == "en" else "内容重复。"
@@ -480,7 +511,6 @@ def crawl_website(start_url, max_pages=100, lang="zh", manual_robots=None, manua
     progress_bar = st.progress(0, text="Initializing...")
     sitemap_has_hreflang = False
     
-    # 1. Site Level Checks
     try:
         site_issues, sitemap_has_hreflang = check_site_level_assets(
             start_url, lang=lang, manual_robots=manual_robots, manual_sitemaps=manual_sitemaps
@@ -490,8 +520,6 @@ def crawl_website(start_url, max_pages=100, lang="zh", manual_robots=None, manua
     except Exception as e:
         pass
 
-    # 2. CWV (Real User Data via API)
-    cwv_data = None
     if psi_key:
         with st.spinner(TRANSLATIONS[lang]["psi_fetching"]):
             cwv_data = fetch_psi_data(start_url, psi_key)
@@ -502,7 +530,6 @@ def crawl_website(start_url, max_pages=100, lang="zh", manual_robots=None, manua
                 if cwv_data and "error" in cwv_data:
                     st.toast(f"PSI Error: {cwv_data['error']}")
 
-    # 3. Crawl
     pages_crawled = 0
     headers = get_browser_headers()
     
@@ -559,7 +586,7 @@ def crawl_website(start_url, max_pages=100, lang="zh", manual_robots=None, manua
     progress_bar.empty()
     
     if not results_data and first_error:
-        return None, None, first_error # Return error tuple
+        return None, None, first_error
         
     return results_data, all_issues, None
 
