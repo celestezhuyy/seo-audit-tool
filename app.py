@@ -240,6 +240,7 @@ TRANSLATIONS = {
         "js_links": "发现 JS 伪链接", 
         "js_links_desc": "href='javascript:' 爬虫无法抓取。",
         "js_links_impact": "导致内部链接断裂，权重无法传递，深层页面变成“孤岛”。",
+        "js_links_sugg": "使用标准 <a href> 标签。", # Fixed: Added missing key
         
         "url_underscore": "URL 包含下划线", 
         "url_underscore_desc": "使用下划线分隔单词。",
@@ -363,7 +364,7 @@ TRANSLATIONS = {
         "soft_404": "Soft 404", "soft_404_desc": "Fake 200.", "soft_404_impact": "Wasted budget.",
         "missing_alt": "Missing Alt", "missing_alt_desc": "No alt text.", "missing_alt_impact": "Bad for Image SEO.", 
         "missing_alt_sugg": "Add descriptive alt attributes.", # Added
-        "js_links": "JS Links", "js_links_desc": "Uncrawlable.", "js_links_impact": "Broken link graph.",
+        "js_links": "JS Links", "js_links_desc": "Uncrawlable.", "js_links_impact": "Broken link graph.", "js_links_sugg": "Use standard <a href> links.", # Fixed: Added missing key
         "url_underscore": "URL Underscores", "url_underscore_desc": "Has _.", "url_underscore_impact": "Bad parsing.",
         "url_uppercase": "URL Uppercase", "url_uppercase_desc": "Has Upper.", "url_uppercase_impact": "Duplicate risk."
     }
