@@ -880,15 +880,14 @@ with st.sidebar:
         if st.button(ui["clear_data"]):
             st.session_state['audit_data'] = None
             st.session_state['audit_issues'] = []
-            st.session_state['cwv_data'] = None
-            st.rerun()
-
+# --- 6. Main Logic ---
 if menu_key == "input":
     st.header(ui["input_header"])
     st.info(ui["input_info"])
     
     col1, col2 = st.columns([3, 1])
     with col1:
+        # Fixed: Renamed variable to target_url to match downstream logic
         target_url = st.text_input(ui["input_label"], placeholder=ui["input_placeholder"])
     with col2:
         max_pages = st.number_input(ui.get("max_pages_label", "Max Pages"), min_value=1, max_value=1000, value=100)
@@ -904,6 +903,7 @@ if menu_key == "input":
 
     start_btn = st.button(ui["start_btn"], type="primary", use_container_width=True)
     
+    # Fixed: Updated condition to use target_url
     if start_btn and target_url:
         if not is_valid_url(target_url): st.error(ui["error_url"])
         else:
