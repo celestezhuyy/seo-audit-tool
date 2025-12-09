@@ -40,7 +40,7 @@ SEVERITY_ORDER = {"Critical": 0, "High": 1, "Medium": 2, "Low": 3}
 TRANSLATIONS = {
     "zh": {
         "sidebar_title": "🔍 AuditAI Pro",
-        "sidebar_caption": "深度审计版 v3.8.2",
+        "sidebar_caption": "深度审计版 v3.8.3",
         "nav_label": "功能导航",
         "nav_options": ["输入网址", "仪表盘", "数据矩阵", "PPT 生成器"],
         "lang_label": "语言 / Language",
@@ -124,7 +124,7 @@ TRANSLATIONS = {
         "serp_sim_title": "Google 搜索结果模拟 (SERP):",
         "rich_sim_title": "富媒体结果模拟 (Rich Results):",
 
-        # --- Issues ---
+        # --- Issues (Now separated Desc and Impact) ---
         "no_robots": "缺失 Robots.txt",
         "no_robots_desc": "无法访问 robots.txt 文件。",
         "no_robots_impact": "爬虫可能抓取无用页面，消耗服务器资源，且无法有效分配爬取预算。",
@@ -158,14 +158,17 @@ TRANSLATIONS = {
         "3xx_title": "内部链接重定向 (3xx)",
         "3xx_desc": "内部链接发生跳转。",
         "3xx_impact": "浪费爬虫预算，增加页面加载延迟，损耗链接传递的权重 (Link Equity)。",
+        "3xx_sugg": "更新链接直接指向最终目标 URL。",
         
         "4xx_title": "死链/客户端错误 (4xx)",
         "4xx_desc": "内部链接返回 4xx 错误 (如 404)。",
         "4xx_impact": "严重破坏用户体验，中断权重传递，导致索引页面被移除。",
+        "4xx_sugg": "修复死链或移除链接。",
         
         "5xx_title": "服务器错误 (5xx)",
         "5xx_desc": "服务器返回 5xx 错误。",
         "5xx_impact": "表明服务器不稳定，Googlebot 会降低该站点的爬取频率。",
+        "5xx_sugg": "检查服务器日志及应用稳定性。",
 
         "hreflang_invalid": "Hreflang 代码格式错误",
         "hreflang_invalid_desc": "语言代码不符合 ISO 639-1 标准。",
@@ -198,6 +201,7 @@ TRANSLATIONS = {
         "long_title": "标题过长", 
         "long_title_desc": "标题过长 (>60字符)。",
         "long_title_impact": "在搜索结果中会被截断 (...)，降低用户点击欲望。",
+        "long_title_sugg": "精简标题长度，建议控制在 60 字符以内。", # Fixed: Added missing key
         
         "missing_desc": "缺失元描述", 
         "missing_desc_desc": "缺失 Meta Description。",
@@ -235,12 +239,12 @@ TRANSLATIONS = {
         "missing_alt": "图片缺失 Alt 属性", 
         "missing_alt_desc": "图片缺少替代文本。",
         "missing_alt_impact": "搜索引擎无法理解图片内容，错失图片搜索流量。",
-        "missing_alt_sugg": "添加图片 alt 属性，描述图片内容。", # Added
+        "missing_alt_sugg": "添加图片 alt 属性，描述图片内容。",
         
         "js_links": "发现 JS 伪链接", 
         "js_links_desc": "href='javascript:' 爬虫无法抓取。",
         "js_links_impact": "导致内部链接断裂，权重无法传递，深层页面变成“孤岛”。",
-        "js_links_sugg": "使用标准 <a href> 标签。", # Fixed: Added missing key
+        "js_links_sugg": "使用标准 <a href> 标签。",
         
         "url_underscore": "URL 包含下划线", 
         "url_underscore_desc": "使用下划线分隔单词。",
@@ -342,9 +346,9 @@ TRANSLATIONS = {
         "sitemap_invalid": "Invalid Sitemap", "sitemap_invalid_desc": "XML Error.", "sitemap_invalid_impact": "Unreadable sitemap.",
         "no_favicon": "Missing Favicon", "no_favicon_desc": "No icon found.", "no_favicon_impact": "Lower CTR in SERP.",
         "duplicate": "Duplicate Content", "duplicate_desc": "Exact match found.", "duplicate_impact": "Keyword cannibalization.",
-        "3xx_title": "Redirect Chain", "3xx_desc": "Internal redirect.", "3xx_impact": "Wasted budget & latency.",
-        "4xx_title": "Broken Link", "4xx_desc": "4xx Error.", "4xx_impact": "Bad UX & equity loss.",
-        "5xx_title": "Server Error", "5xx_desc": "5xx Error.", "5xx_impact": "Googlebot reduces crawl rate.",
+        "3xx_title": "Redirect Chain", "3xx_desc": "Internal redirect.", "3xx_impact": "Wasted budget & latency.", "3xx_sugg": "Update links directly.",
+        "4xx_title": "Broken Link", "4xx_desc": "4xx Error.", "4xx_impact": "Bad UX & equity loss.", "4xx_sugg": "Fix or remove links.",
+        "5xx_title": "Server Error", "5xx_desc": "5xx Error.", "5xx_impact": "Googlebot reduces crawl rate.", "5xx_sugg": "Check server logs.",
         "hreflang_invalid": "Invalid Hreflang", "hreflang_invalid_desc": "Bad code.", "hreflang_invalid_impact": "Targeting failed.",
         "hreflang_no_default": "No x-default", "hreflang_no_default_desc": "Missing fallback.", "hreflang_no_default_impact": "Wrong language shown.",
         "alt_bad_quality": "Bad Alt Text", "alt_bad_quality_desc": "Generic text.", "alt_bad_quality_impact": "No image SEO value.",
@@ -352,7 +356,7 @@ TRANSLATIONS = {
         "cls_risk": "CLS Risk", "cls_risk_desc": "Missing dim.", "cls_risk_impact": "Layout shifts & ranking drop.",
         "missing_title": "Missing Title", "missing_title_desc": "No title.", "missing_title_impact": "Severe ranking loss.",
         "short_title": "Title Short", "short_title_desc": "Too short.", "short_title_impact": "Missed keywords.",
-        "long_title": "Title Long", "long_title_desc": "Too long.", "long_title_impact": "Truncated in SERP.",
+        "long_title": "Title Long", "long_title_desc": "Too long.", "long_title_impact": "Truncated in SERP.", "long_title_sugg": "Shorten title.", # Fixed: Added
         "missing_desc": "Missing Description", "missing_desc_desc": "No meta desc.", "missing_desc_impact": "Lower CTR.",
         "short_desc": "Description Short", "short_desc_desc": "Too thin.", "short_desc_impact": "Less appealing.",
         "missing_h1": "Missing H1", "missing_h1_desc": "No H1.", "missing_h1_impact": "Poor structure.",
@@ -363,8 +367,8 @@ TRANSLATIONS = {
         "missing_hreflang": "No Hreflang", "missing_hreflang_desc": "Missing tags.", "missing_hreflang_impact": "Poor internationalization.",
         "soft_404": "Soft 404", "soft_404_desc": "Fake 200.", "soft_404_impact": "Wasted budget.",
         "missing_alt": "Missing Alt", "missing_alt_desc": "No alt text.", "missing_alt_impact": "Bad for Image SEO.", 
-        "missing_alt_sugg": "Add descriptive alt attributes.", # Added
-        "js_links": "JS Links", "js_links_desc": "Uncrawlable.", "js_links_impact": "Broken link graph.", "js_links_sugg": "Use standard <a href> links.", # Fixed: Added missing key
+        "missing_alt_sugg": "Add descriptive alt attributes.",
+        "js_links": "JS Links", "js_links_desc": "Uncrawlable.", "js_links_impact": "Broken link graph.", "js_links_sugg": "Use standard <a href> links.",
         "url_underscore": "URL Underscores", "url_underscore_desc": "Has _.", "url_underscore_impact": "Bad parsing.",
         "url_uppercase": "URL Uppercase", "url_uppercase_desc": "Has Upper.", "url_uppercase_impact": "Duplicate risk."
     }
