@@ -1054,10 +1054,13 @@ elif menu_key == "ppt":
                 }
             grouped[t]['count'] += 1
             if len(grouped[t]['examples']) < 5: 
-                # Store full string if meta present
-                if "meta" in i: grouped[t]['examples'].append(f"{i['url']} Duplicate of: {i['meta'].split('Duplicate of: ')[1]}")
-                else: grouped[t]['examples'].append(i['url'])
+                # Fixed: Only try to split if "Duplicate of:" exists
+                if "meta" in i and "Duplicate of:" in i['meta']: 
+                     grouped[t]['examples'].append(f"{i['url']} Duplicate of: {i['meta'].split('Duplicate of: ')[1]}")
+                else: 
+                     grouped[t]['examples'].append(i['url'])
         
+        # Sort by Category -> Severity -> Count
         sov_order = SEVERITY_ORDER
         cat_order = {k: v for v, k in enumerate(CATEGORY_ORDER)}
         
