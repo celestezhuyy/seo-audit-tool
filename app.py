@@ -24,7 +24,7 @@ except ImportError:
     st.error("Missing dependencies! Please add 'python-pptx' to requirements.txt.")
     st.stop()
 
-# --- Level 0: 页面基础配置 ---
+# --- 1. 页面基础配置 ---
 st.set_page_config(
     page_title="NextGen SEO Auditor",
     page_icon="🔍",
@@ -32,7 +32,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- Level 1: 基础工具函数 (最优先定义，防止 NameError) ---
+# --- 2. 基础工具函数 ---
 def is_valid_url(url):
     try:
         result = urlparse(url)
@@ -50,25 +50,17 @@ def get_browser_headers():
         'Connection': 'keep-alive',
     }
 
-def fetch_psi_data(url, api_key):
-    if not api_key: return None
-    endpoint = f"https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url={url}&key={api_key}&strategy=mobile"
-    try:
-        response = requests.get(endpoint, timeout=30)
-        if response.status_code == 200:
-            data = response.json()
-            crux = data.get('loadingExperience', {}).get('metrics', {})
-            if not crux: return {"error": "No CrUX data available"}
-            return {
-                "LCP": crux.get('LARGEST_CONTENTFUL_PAINT_MS', {}).get('percentile', 0) / 1000,
-                "CLS": crux.get('CUMULATIVE_LAYOUT_SHIFT_SCORE', {}).get('percentile', 0) / 100,
-                "INP": crux.get('INTERACTION_TO_NEXT_PAINT', {}).get('percentile', 0),
-                "FCP": crux.get('FIRST_CONTENTFUL_PAINT_MS', {}).get('percentile', 0) / 1000,
-            }
-        else: return {"error": f"API Error: {response.status_code}"}
-    except Exception as e: return {"error": str(e)}
+# --- 3. 全局变量初始化 (防止 NameError) ---
+target_url = ""
+max_pages = 100
+manual_robots = ""
+manual_sitemaps = []
+psi_key = ""
+psi_list_url = ""   # Restored
+psi_detail_url = "" # Restored
+start_btn = False
 
-# --- Level 2: 排序与配置常量 ---
+# --- 4. 排序逻辑配置 ---
 CATEGORY_ORDER = ["access", "indexability", "technical", "content", "image_ux", "cwv_performance"]
 SEVERITY_ORDER = {"Critical": 0, "High": 1, "Medium": 2, "Low": 3}
 
@@ -92,11 +84,11 @@ def get_issue_priority(issue_id):
     try: return ISSUE_PRIORITY_LIST.index(issue_id)
     except ValueError: return 999 
 
-# --- Level 3: 国际化字典 (i18n) ---
+# --- 5. 国际化字典 (i18n) ---
 TRANSLATIONS = {
     "zh": {
         "sidebar_title": "🔍 AuditAI Pro",
-        "sidebar_caption": "旗舰审计版 v6.8 (Final)",
+        "sidebar_caption": "旗舰审计版 v7.1",
         "nav_label": "功能导航",
         "nav_options": ["输入网址", "仪表盘", "数据矩阵", "PPT 生成器"],
         "lang_label": "语言 / Language",
@@ -110,14 +102,16 @@ TRANSLATIONS = {
         "psi_settings": "Google PSI API 设置 (可选)",
         "psi_api_key_label": "输入 Google PageSpeed API Key",
         "psi_api_help": "建议填入以获取 LCP/CLS/INP 真实数据。留空则只进行代码审计。",
+        "psi_list_url_label": "产品列表页 URL (可选)", # Restored
+        "psi_detail_url_label": "产品详情页 URL (可选)", # Restored
         "psi_get_key": "没有 API Key? [点击这里免费申请](https://developers.google.com/speed/docs/insights/v5/get-started)",
-        "psi_fetching": "正在调用 Google API 获取首页真实 CWV 数据...",
+        "psi_fetching": "正在调用 Google API 获取 {} 数据...", # Placeholders for Page Type
         "psi_success": "成功获取真实用户数据！",
         "psi_error": "API 调用失败或无 CrUX 数据",
         
         "input_header": "开始深度审计",
-        "input_info": "说明: v6.8 修复了函数定义顺序，确保稳定性。",
-        "input_label": "输入目标网址",
+        "input_info": "说明: v7.1 恢复了列表页与详情页的 CWV 独立检测功能。",
+        "input_label": "输入目标网址 (首页)",
         "input_placeholder": "https://example.com",
         "max_pages_label": "最大爬取页面数",
         "adv_settings": "高级设置 (Advanced Settings)", 
@@ -163,15 +157,15 @@ TRANSLATIONS = {
         "ppt_next": "下一页 ➡️",
         
         # Categories Labels
-        "cat_access": "1. 可访问性与索引 (Access & Indexing)",
-        "cat_indexability": "2. 索引规范性 (Indexability)",
-        "cat_technical": "3. 技术与架构 (Technical SEO)",
-        "cat_content": "4. 页面内容 (On-Page Content)",
-        "cat_image_ux": "5. 用户体验与资源 (UX & Assets)",
-        "cat_cwv_performance": "6. 核心性能指标 (Core Web Vitals)",
+        "cat_access": "可访问性与索引 (Access & Indexing)",
+        "cat_indexability": "索引规范性 (Indexability)",
+        "cat_technical": "技术与架构 (Technical SEO)",
+        "cat_content": "页面内容 (On-Page Content)",
+        "cat_image_ux": "用户体验与资源 (UX & Assets)",
+        "cat_cwv_performance": "核心性能指标 (Core Web Vitals)",
 
         "ppt_cover_title": "SEO 深度技术审计报告",
-        "ppt_cover_sub": "Generated by AuditAI Pro v6.8",
+        "ppt_cover_sub": "Generated by AuditAI Pro v7.1",
         "ppt_slide_desc_title": "深度分析",
         "ppt_slide_count_title": "样本中受影响页面数: {} 个",
         "ppt_slide_ex_title": "受影响页面示例", 
@@ -196,7 +190,7 @@ TRANSLATIONS = {
         "3xx_title": "内部链接重定向 (3xx)", "3xx_desc": "内部链接指向了一个发生 301 或 302 跳转的地址。", "3xx_impact": "浪费爬虫预算，增加页面加载延迟，且每次跳转都会损耗少量链接传递的权重 (Link Equity)。", "3xx_sugg": "批量更新内部链接，使其直接指向最终的目标 URL，避免中间跳转。",
         "4xx_title": "死链/客户端错误 (4xx)", "4xx_desc": "内部链接返回 404 (未找到) 或 403 (禁止访问) 错误。", "4xx_impact": "严重破坏用户体验，中断权重传递路径，并可能导致已索引的页面被 Google 移除。", "4xx_sugg": "移除死链，或者将其重定向到最相关的有效页面。",
         "5xx_title": "服务器错误 (5xx)", "5xx_desc": "服务器响应 500/502/503 等内部错误。", "5xx_impact": "表明服务器极其不稳定，Googlebot 会因此降低对该站点的爬取频率以减轻负载。", "5xx_sugg": "检查服务器错误日志，优化数据库查询或升级服务器配置。",
-
+        
         "hreflang_invalid": "Hreflang 格式错误", "hreflang_invalid_desc": "语言代码不符合 ISO 639-1 标准 (如使用了错误的代码格式)。", "hreflang_invalid_impact": "Google 无法识别目标语言，导致国际化定位失效，不同地区用户可能看到错误的语言页面。", "hreflang_invalid_sugg": "使用标准的 ISO 语言代码 (例如 'en-US' 而不是 'en_US')。",
         "hreflang_no_default": "Hreflang 缺失 x-default", "hreflang_no_default_desc": "未配置 'x-default' 回退版本。", "hreflang_no_default_impact": "当用户来自未指定的语言/地区时，可能无法自动匹配到最合适的通用版本（通常是英语）。", "hreflang_no_default_sugg": "添加 hreflang='x-default' 标签，指定默认的语言版本。",
         "missing_hreflang": "缺失 Hreflang", "missing_hreflang_desc": "未发现语言区域标记（HTML或Sitemap中均无）。", "missing_hreflang_impact": "多语言站点无法正确定位目标受众，导致流量不精准。", "missing_hreflang_sugg": "在 HTML 头部或 Sitemap 中配置 hreflang 标签。",
@@ -239,14 +233,16 @@ TRANSLATIONS = {
         "psi_settings": "Google PSI API Settings (Optional)",
         "psi_api_key_label": "Enter Google PageSpeed API Key",
         "psi_api_help": "Enter API Key to fetch Real User Metrics (LCP, CLS, INP) for the home page. Leave empty for code-only check.",
+        "psi_list_url_label": "Product List URL (Optional)", 
+        "psi_detail_url_label": "Product Detail URL (Optional)", 
         "psi_get_key": "No API Key? [Get one for free here](https://developers.google.com/speed/docs/insights/v5/get-started)",
-        "psi_fetching": "Fetching real CWV data from Google API...",
+        "psi_fetching": "Fetching real CWV data from Google API ({}) ...",
         "psi_success": "Real user data fetched successfully!",
         "psi_error": "API Failed or No CrUX Data",
         
         "input_header": "Start Deep Audit",
         "input_info": "Note: v6.8 features fixed PPT generation and enhanced descriptions.",
-        "input_label": "Target URL",
+        "input_label": "Target URL (Homepage)",
         "input_placeholder": "https://example.com",
         "max_pages_label": "Max Pages to Crawl",
         "adv_settings": "Advanced Settings", 
@@ -292,12 +288,12 @@ TRANSLATIONS = {
         "ppt_next": "Next ➡️",
         
         # Categories
-        "cat_access": "1. Access & Indexing",
-        "cat_indexability": "2. Indexability",
-        "cat_technical": "3. Technical SEO",
-        "cat_content": "4. On-Page Content",
-        "cat_image_ux": "5. UX & Assets",
-        "cat_cwv_performance": "6. Core Web Vitals (Performance)",
+        "cat_access": "Access & Indexing",
+        "cat_indexability": "Indexability",
+        "cat_technical": "Technical SEO",
+        "cat_content": "On-Page Content",
+        "cat_image_ux": "UX & Assets",
+        "cat_cwv_performance": "Core Web Vitals (Performance)",
         
         "ppt_cover_title": "SEO Technical Audit",
         "ppt_cover_sub": "Generated by AuditAI Pro v6.8",
@@ -359,20 +355,20 @@ TRANSLATIONS = {
         "duplicate_impact": "Causes keyword cannibalization and dilutes link equity, preventing both pages from ranking well.", 
         "duplicate_sugg": "Choose a master URL and add a rel='canonical' tag on all duplicate versions pointing to it.",
         
-        "3xx_title": "Redirect Chain", 
-        "3xx_desc": "Internal link triggers a 301 or 302 redirect.", 
-        "3xx_impact": "Wastes crawl budget, adds latency to page load, and dilutes the link equity passed to the destination.", 
-        "3xx_sugg": "Update the internal link to point directly to the final destination URL.",
+        "http_3xx": "Redirect Chain", 
+        "http_3xx_desc": "Internal link triggers a 301 or 302 redirect.", 
+        "http_3xx_impact": "Wastes crawl budget, adds latency to page load, and dilutes the link equity passed to the destination.", 
+        "http_3xx_sugg": "Update the internal link to point directly to the final destination URL.",
         
-        "4xx_title": "Broken Link", 
-        "4xx_desc": "Internal link returns a 4xx error (e.g., 404 Not Found).", 
-        "4xx_impact": "Creates a bad user experience, breaks the flow of link equity, and may cause indexed pages to be dropped.", 
-        "4xx_sugg": "Fix the broken link or remove it.",
+        "http_4xx": "Broken Link", 
+        "http_4xx_desc": "Internal link returns a 4xx error (e.g., 404 Not Found).", 
+        "http_4xx_impact": "Creates a bad user experience, breaks the flow of link equity, and may cause indexed pages to be dropped.", 
+        "http_4xx_sugg": "Fix the broken link or remove it.",
         
-        "5xx_title": "Server Error", 
-        "5xx_desc": "Server returned a 5xx error (e.g., 500 Internal Server Error).", 
-        "5xx_impact": "Signals server instability. Googlebot will reduce the crawl rate of your site to avoid overloading it.", 
-        "5xx_sugg": "Check server error logs and ensure database stability.",
+        "http_5xx": "Server Error", 
+        "http_5xx_desc": "Server returned a 5xx error (e.g., 500 Internal Server Error).", 
+        "http_5xx_impact": "Signals server instability. Googlebot will reduce the crawl rate of your site to avoid overloading it.", 
+        "http_5xx_sugg": "Check server error logs and ensure database stability.",
         
         "hreflang_invalid": "Invalid Hreflang", 
         "hreflang_invalid_desc": "The language code format does not comply with ISO 639-1 standards.", 
@@ -442,7 +438,7 @@ TRANSLATIONS = {
         "missing_jsonld": "No Schema", 
         "missing_jsonld_desc": "No JSON-LD structured data found.", 
         "missing_jsonld_impact": "Missed opportunity for Rich Snippets (e.g., Stars, Price) which boost CTR.", 
-        "missing_jsonld_sugg": "Add JSON-LD schema based on page type:\n- Product: Product\n- Blog: Article\n- Home: Organization",
+        "missing_jsonld_sugg": "Detected page type: {}. Add corresponding JSON-LD Schema.",
         
         "missing_hreflang": "No Hreflang", 
         "missing_hreflang_desc": "No language targeting tags found.", 
@@ -476,7 +472,7 @@ TRANSLATIONS = {
     }
 }
 
-# --- 6. 核心逻辑 (Level 4 - Logic Layer) ---
+# --- 6. 核心逻辑 (Data Layer) ---
 def get_translated_text(issue_id, lang, args=None):
     if args is None: args = []
     t = TRANSLATIONS[lang]
@@ -505,30 +501,31 @@ def fetch_psi_data(url, api_key):
         else: return {"error": f"API Error: {response.status_code}"}
     except Exception as e: return {"error": str(e)}
 
-def check_cwv_issues(cwv_data, url):
+def check_cwv_issues(cwv_data, url, label=""):
     issues = []
     if not cwv_data or "error" in cwv_data: return issues
     
-    # LCP
+    category_key = "cwv_performance"
+
     lcp = cwv_data.get("LCP", 0)
     if lcp > 2.5:
         issues.append({
-            "id": "lcp_issue", "category": "cwv_performance", "severity": "Critical" if lcp > 4.0 else "High",
-            "url": url, "args": [lcp]
+            "id": "lcp_issue", "category": category_key, "severity": "Critical" if lcp > 4.0 else "High",
+            "url": url, "args": [lcp], "examples": [f"{url} ({lcp:.2f}s) {label}"] 
         })
-    # INP
+    
     inp = cwv_data.get("INP", 0)
     if inp > 200:
         issues.append({
-            "id": "inp_issue", "category": "cwv_performance", "severity": "Critical" if inp > 500 else "High",
-            "url": url, "args": [inp]
+            "id": "inp_issue", "category": category_key, "severity": "Critical" if inp > 500 else "High",
+            "url": url, "args": [inp], "examples": [f"{url} ({inp}ms) {label}"]
         })
-    # CLS
+
     cls = cwv_data.get("CLS", 0)
     if cls > 0.1:
         issues.append({
-            "id": "cls_issue", "category": "cwv_performance", "severity": "Critical" if cls > 0.25 else "High",
-            "url": url, "args": [cls]
+            "id": "cls_issue", "category": category_key, "severity": "Critical" if cls > 0.25 else "High",
+            "url": url, "args": [cls], "examples": [f"{url} ({cls:.3f}) {label}"]
         })
     return issues
 
@@ -543,16 +540,16 @@ def check_site_level_assets(start_url, manual_robots=None, manual_sitemaps=None)
     try:
         r = requests.get(robots_url, headers=headers, timeout=10, allow_redirects=True, stream=True, verify=False)
         if r.status_code != 200:
-            issues.append({"id": "no_robots", "category": "access", "severity": "Medium", "url": robots_url})
+            issues.append({"id": "no_robots", "category": "access", "severity": "Medium", "url": robots_url, "examples": [robots_url]})
         else:
             content = r.text.lower()
             if "disallow: /" in content and "allow:" not in content:
-                 issues.append({"id": "robots_bad_rule", "category": "access", "severity": "Critical", "url": robots_url})
+                 issues.append({"id": "robots_bad_rule", "category": "access", "severity": "Critical", "url": robots_url, "examples": [robots_url]})
             if "sitemap:" not in content:
-                 issues.append({"id": "robots_no_sitemap", "category": "access", "severity": "Low", "url": robots_url})
+                 issues.append({"id": "robots_no_sitemap", "category": "access", "severity": "Low", "url": robots_url, "examples": [robots_url]})
         r.close()
     except: 
-        issues.append({"id": "no_robots", "category": "access", "severity": "Medium", "url": robots_url})
+        issues.append({"id": "no_robots", "category": "access", "severity": "Medium", "url": robots_url, "examples": [robots_url]})
 
     # Sitemap
     sitemap_urls = manual_sitemaps if manual_sitemaps else [urljoin(base_url, "/sitemap.xml")]
@@ -568,20 +565,20 @@ def check_site_level_assets(start_url, manual_robots=None, manual_sitemaps=None)
                     if 'hreflang' in r.text or 'xhtml' in r.text: sitemap_has_hreflang = True
                 except:
                     if not sm_url.endswith('.gz'):
-                        issues.append({"id": "sitemap_invalid", "category": "access", "severity": "Medium", "url": sm_url})
+                        issues.append({"id": "sitemap_invalid", "category": "access", "severity": "Medium", "url": sm_url, "examples": [sm_url]})
             else:
-                if manual_sitemaps: issues.append({"id": "no_sitemap", "category": "access", "severity": "Low", "url": sm_url})
+                if manual_sitemaps: issues.append({"id": "no_sitemap", "category": "access", "severity": "Low", "url": sm_url, "examples": [sm_url]})
         except:
-            if manual_sitemaps: issues.append({"id": "no_sitemap", "category": "access", "severity": "Low", "url": sm_url})
+            if manual_sitemaps: issues.append({"id": "no_sitemap", "category": "access", "severity": "Low", "url": sm_url, "examples": [sm_url]})
 
     if not any_valid and not manual_sitemaps:
-         issues.append({"id": "no_sitemap", "category": "access", "severity": "Low", "url": sitemap_urls[0]})
+         issues.append({"id": "no_sitemap", "category": "access", "severity": "Low", "url": sitemap_urls[0], "examples": [sitemap_urls[0]]})
 
     # Favicon
     try:
         r = requests.get(urljoin(base_url, "/favicon.ico"), headers=headers, timeout=5, verify=False)
         if r.status_code != 200 or int(r.headers.get('content-length', 0)) == 0:
-            issues.append({"id": "no_favicon", "category": "image_ux", "severity": "Low", "url": base_url})
+            issues.append({"id": "no_favicon", "category": "image_ux", "severity": "Low", "url": base_url, "examples": [base_url]})
     except: pass
 
     return issues, sitemap_has_hreflang
@@ -645,6 +642,15 @@ def analyze_page(url, content, status, sitemap_has_hreflang):
     if bad_alt > 0: issues.append({"id": "alt_bad_quality", "category": "image_ux", "severity": "Low", "url": url})
     if cls_risk > 0: issues.append({"id": "cls_risk", "category": "cwv_performance", "severity": "Medium", "url": url})
 
+    links = soup.find_all('a', href=True)
+    bad_anchors = ["click here", "read more", "learn more", "more", "here"]
+    found_bad = []
+    for link in links:
+        at = link.get_text().strip().lower()
+        if at in bad_anchors: found_bad.append(at)
+    if found_bad:
+        issues.append({"id": "anchor_bad_quality", "category": "image_ux", "severity": "Low", "url": url})
+
     # Content
     title = soup.title.string.strip() if soup.title else None
     if not title: issues.append({"id": "missing_title", "category": "content", "severity": "High", "url": url})
@@ -667,22 +673,26 @@ def analyze_page(url, content, status, sitemap_has_hreflang):
         if is_s404:
             issues.append({"id": "soft_404", "category": "access", "severity": "Critical", "url": url})
 
-    # Anchor Quality
-    bad_anchors = ["click here", "read more", "more"]
-    if any(a.get_text().strip().lower() in bad_anchors for a in soup.find_all('a')):
-        issues.append({"id": "anchor_bad_quality", "category": "image_ux", "severity": "Low", "url": url})
-
     return {
         "URL": url, "Status": status, "Title": title, "Canonical": can_url,
         "Content_Hash": hashlib.md5(soup.get_text().encode('utf-8')).hexdigest()
     }, issues
 
-def crawl_website(start_url, max_pages, lang, manual_robots, manual_sitemaps, psi_key):
+def crawl_website(start_url, max_pages, lang, manual_robots, manual_sitemaps, psi_key, list_url=None, detail_url=None):
     visited = set()
     seen_hashes = {} 
     seen_urls = set()
+    
+    # Priority Queue
     queue = [start_url]
     seen_urls.add(start_url)
+    if list_url and is_valid_url(list_url): 
+        queue.append(list_url)
+        seen_urls.add(list_url)
+    if detail_url and is_valid_url(detail_url): 
+        queue.append(detail_url)
+        seen_urls.add(detail_url)
+
     results_data = []
     all_issues = []
     first_error = None
@@ -703,16 +713,18 @@ def crawl_website(start_url, max_pages, lang, manual_robots, manual_sitemaps, ps
     except Exception as e:
         pass
 
-    # 2. CWV
+    # 2. CWV (Batch)
     if psi_key:
-        with st.spinner(TRANSLATIONS[lang]["psi_fetching"]):
-            cwv_data = fetch_psi_data(start_url, psi_key)
-            if cwv_data and "error" not in cwv_data: 
-                st.session_state['cwv_data'] = cwv_data
-                issues_list = check_cwv_issues(cwv_data, start_url)
-                all_issues.extend(issues_list)
-            else: 
-                st.session_state['cwv_data'] = None
+        with st.spinner(TRANSLATIONS[lang]["psi_fetching"].format("Pages")):
+            targets = [("Home", start_url)]
+            if list_url and is_valid_url(list_url): targets.append(("List", list_url))
+            if detail_url and is_valid_url(detail_url): targets.append(("Detail", detail_url))
+            
+            for label, t_url in targets:
+                cwv_data = fetch_psi_data(t_url, psi_key)
+                if cwv_data and "error" not in cwv_data:
+                    if label == "Home": st.session_state['cwv_data'] = cwv_data
+                    all_issues.extend(check_cwv_issues(cwv_data, t_url, label=f"({label})"))
 
     # 3. Crawl
     count = 0
@@ -760,7 +772,6 @@ def crawl_website(start_url, max_pages, lang, manual_robots, manual_sitemaps, ps
                         else:
                             is_handled = current_canonical and current_canonical != current_url
                             if not is_handled:
-                                # 重复内容
                                 all_issues.append({
                                     "id": "duplicate", "category": "indexability", 
                                     "severity": "High", 
@@ -824,8 +835,6 @@ def create_styled_pptx(slides_data, lang):
         p.space_before = Pt(3)
         p.text = "Please provide a meta description..."
         set_font(p.font, 14, False, RGBColor(77, 81, 86))
-        
-        # Label above visual
         label = slide.shapes.add_textbox(Inches(7), Inches(3.6), Inches(3), Inches(0.3))
         p = label.text_frame.add_paragraph()
         p.text = txt["serp_sim_title"]
@@ -1040,6 +1049,8 @@ if menu_key == "input":
     
     with st.expander(ui.get("psi_settings", "Google PSI")):
         psi_key = st.text_input(ui.get("psi_api_key_label", "API Key"), type="password", help=ui.get("psi_api_help", ""))
+        psi_list_url = st.text_input(ui.get("psi_list_url_label", "List URL"))
+        psi_detail_url = st.text_input(ui.get("psi_detail_url_label", "Detail URL"))
         st.caption(ui["psi_get_key"])
 
     if st.button(ui["start_btn"], type="primary"):
@@ -1047,7 +1058,7 @@ if menu_key == "input":
             st.error(ui["error_url"])
         else:
             with st.spinner(ui["spinner_crawl"].format(max_pages)):
-                data, issues, error_msg = crawl_website(target_url, max_pages, lang, manual_robots, manual_sitemaps, psi_key)
+                data, issues, error_msg = crawl_website(target_url, max_pages, lang, manual_robots, manual_sitemaps, psi_key, psi_list_url, psi_detail_url)
                 if not data:
                     st.error(ui["error_no_data"].format(error_msg or "Unknown Error"))
                 else:
