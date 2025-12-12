@@ -53,7 +53,8 @@ def get_browser_headers():
 # --- 3. 全局变量初始化 ---
 target_url = ""
 max_pages = 100
-manual_robots = ""
+check_robots_flag = True  # New default
+crawl_sitemap_flag = True # New default
 manual_sitemaps = []
 psi_key = ""
 psi_list_url = ""
@@ -82,7 +83,7 @@ def get_issue_priority(issue_id):
 TRANSLATIONS = {
     "zh": {
         "sidebar_title": "🔍 AuditAI Pro",
-        "sidebar_caption": "旗舰审计版 v7.3",
+        "sidebar_caption": "旗舰审计版 v7.4",
         "nav_label": "功能导航",
         "nav_options": ["输入网址", "仪表盘", "数据矩阵", "PPT 生成器"],
         "lang_label": "语言 / Language",
@@ -104,13 +105,14 @@ TRANSLATIONS = {
         "psi_error": "API 调用失败或无 CrUX 数据",
         
         "input_header": "开始深度审计",
-        "input_info": "说明: v7.3 优化了3xx/JS/CWV的可视化展示，并修复了锚点链接干扰。",
+        "input_info": "说明: v7.4 优化了高级设置，支持智能 Robots/Sitemap 策略配置。",
         "input_label": "输入目标网址 (首页)",
         "input_placeholder": "https://example.com",
         "max_pages_label": "最大爬取页面数",
         "adv_settings": "高级设置 (Advanced Settings)", 
-        "manual_robots": "手动 Robots.txt 地址 (可选)", 
-        "manual_sitemaps": "手动 Sitemap 地址 (每行一个, 可选)", 
+        "check_robots_label": "检查并遵循 Robots.txt 规则", # New
+        "crawl_sitemap_label": "自动抓取 Robots.txt 中的 Sitemap", # New
+        "manual_sitemaps": "手动 Sitemap 地址 (每行一个, 补充用)", 
         "start_btn": "开始深度爬取",
         "error_url": "网址格式错误",
         "spinner_crawl": "正在执行深度审计 (Max {} pages)...", 
@@ -170,8 +172,8 @@ TRANSLATIONS = {
 
         # --- Issues ---
         "lcp_issue": "LCP (最大内容绘制) 超标", "lcp_issue_desc": "LCP 时间为 {:.2f}s (目标 <2.5s)。页面主要内容加载过于缓慢。", "lcp_issue_impact": "LCP 是 Google 核心排名因素。加载缓慢会导致用户跳出率飙升，并直接降低在移动端的搜索排名。", "lcp_issue_sugg": "压缩图片体积（使用 WebP），使用 CDN 分发内容，推迟非关键 JS 执行，并预加载 LCP 关键元素。",
-        "cls_issue": "CLS (累积布局偏移) 超标", "cls_issue_desc": "CLS 得分为 {:.3f} (目标 <0.1)。页面加载过程中元素发生意外位移，视觉稳定性差。", "cls_issue_impact": "作为核心排名因素，布局不稳定会导致用户误触广告或按钮，严重损害品牌信誉和用户体验。", "cls_issue_sugg": "为所有图片和视频元素指定明确的宽度和高度属性，避免在顶部动态插入内容。",
-        "inp_issue": "INP (交互到绘制延迟) 超标", "inp_issue_desc": "INP 延迟为 {}ms (目标 <200ms)。用户点击按钮后，页面响应非常迟钝。", "inp_issue_impact": "Google 新引入的核心指标。高延迟会让用户觉得网站“卡顿”或无响应，严重影响转化率。", "inp_issue_sugg": "减少主线程阻塞，将长任务 (Long Tasks) 拆分为小任务，并优化复杂的 JavaScript 事件处理逻辑。",
+        "cls_issue": "CLS (累积布局偏移) 超标", "cls_issue_desc": "页面加载过程中元素发生意外位移 (Score > 0.1)。", "cls_issue_impact": "作为核心排名因素，布局不稳定会导致用户误触广告或按钮，严重损害品牌信誉和用户体验。", "cls_issue_sugg": "为所有图片和视频元素指定明确的宽度和高度属性，避免在顶部动态插入内容。",
+        "inp_issue": "INP (交互到绘制延迟) 超标", "inp_issue_desc": "用户点击按钮后，页面响应延迟超过 200ms。", "inp_issue_impact": "Google 新引入的核心指标。高延迟会让用户觉得网站“卡顿”或无响应，严重影响转化率。", "inp_issue_sugg": "减少主线程阻塞，将长任务 (Long Tasks) 拆分为小任务，并优化复杂的 JavaScript 事件处理逻辑。",
 
         "no_robots": "缺失 Robots.txt", "no_robots_desc": "无法访问根目录的 robots.txt 文件，或者服务器返回错误状态码。", "no_robots_impact": "爬虫可能抓取无用的后台页面，不仅消耗服务器资源，还会浪费宝贵的爬取预算。", "no_robots_sugg": "在网站根目录创建标准的 robots.txt 文件，并确保其对搜索引擎爬虫公开可见。",
         "robots_bad_rule": "Robots.txt 封禁风险", "robots_bad_rule_desc": "检测到全站封禁规则 (Disallow: /)，且未发现针对 Googlebot 的例外规则。", "robots_bad_rule_impact": "这将直接导致搜索引擎停止抓取并索引您的网站，所有自然搜索流量将归零。", "robots_bad_rule_sugg": "立即移除 'Disallow: /' 规则，或者为搜索引擎爬虫添加具体的 'Allow' 规则。",
@@ -195,7 +197,7 @@ TRANSLATIONS = {
         "short_desc": "元描述过短", "short_desc_desc": "描述内容过少，无法形成完整的句子。", "short_desc_impact": "无法充分展示页面卖点，在搜索结果中缺乏竞争力。", "short_desc_sugg": "扩充描述至 120-155 字符，提供更多有价值的信息。",
         "missing_h1": "缺失 H1 标签", "missing_h1_desc": "页面缺乏 <h1> 主标题。", "missing_h1_impact": "搜索引擎难以理解内容的层级结构和核心主题，降低了关键词的相关性权重。", "missing_h1_sugg": "确保每个页面有且仅有一个 H1 标签，概括当前页面的主题。",
         "missing_viewport": "缺失移动端视口配置", "missing_viewport_desc": "未配置 <meta name='viewport'> 标签。", "missing_viewport_impact": "在移动设备上显示异常（字体极小）。Google 移动优先索引会严重惩罚此类页面。", "missing_viewport_sugg": "在 <head> 中添加标准的 viewport meta 标签。",
-        "missing_canonical": "缺失 Canonical 标签", "missing_canonical_desc": "未指定规范链接。", "missing_canonical_impact": "无法应对 URL 参数（如 ?id=1）导致的重复内容问题，容易造成权重稀释。", "missing_canonical_sugg": "在所有页面添加自引用（Self-referencing）或指向原件的 Canonical 标签。",
+        "missing_canonical": "缺失 Canonical 标签", "missing_canonical_desc": "未指定规范链接。", "missing_canonical_impact": "High risk of duplicate content issues, especially with URL parameters.", "missing_canonical_sugg": "Add a self-referencing canonical tag to all pages.",
         "missing_jsonld": "缺失结构化数据", "missing_jsonld_desc": "未检测到 Schema.org 标记。", "missing_jsonld_impact": "错失富媒体搜索结果（Rich Results），在 SERP 中不如竞争对手显眼。", "missing_jsonld_sugg": "检测到页面类型可能为：{}。建议添加对应的 JSON-LD Schema。",
         "missing_hreflang": "缺失 Hreflang", "missing_hreflang_desc": "未发现语言区域标记（HTML或Sitemap中均无）。", "missing_hreflang_impact": "多语言站点无法正确定位目标受众，导致流量不精准。", "missing_hreflang_sugg": "在 HTML 头部或 Sitemap 中配置 hreflang 标签。",
         "soft_404": "疑似软 404 (Soft 404)", "soft_404_desc": "页面返回 200 状态码但内容显示“未找到”。", "soft_404_impact": "严重浪费爬虫预算，导致无效页面挤占有效页面的索引名额。", "soft_404_sugg": "配置服务器对不存在的页面返回 404 HTTP 状态码。",
@@ -206,7 +208,7 @@ TRANSLATIONS = {
     },
     "en": {
         "sidebar_title": "🔍 AuditAI Pro",
-        "sidebar_caption": "Deep Audit Edition v7.3",
+        "sidebar_caption": "Deep Audit Edition v7.4",
         "nav_label": "Navigation",
         "nav_options": ["Input URL", "Dashboard", "Data Matrix", "PPT Generator"],
         "lang_label": "Language / 语言",
@@ -217,6 +219,7 @@ TRANSLATIONS = {
         "sitemap_no_href": "⚠️ No Hreflang",       
         "sitemap_missing": "❌ Sitemap Missing",
         
+        # PSI Related
         "psi_settings": "Google PSI API Settings (Optional)",
         "psi_api_key_label": "Enter Google PageSpeed API Key",
         "psi_api_help": "Enter API Key to fetch Real User Metrics (LCP, CLS, INP) for the home page. Leave empty for code-only check.",
@@ -233,7 +236,8 @@ TRANSLATIONS = {
         "input_placeholder": "https://example.com",
         "max_pages_label": "Max Pages to Crawl",
         "adv_settings": "Advanced Settings", 
-        "manual_robots": "Manual Robots.txt URL (Optional)", 
+        "check_robots_label": "Check & Respect Robots.txt", # New
+        "crawl_sitemap_label": "Parse Sitemap from Robots.txt", # New
         "manual_sitemaps": "Manual Sitemap URLs (One per line, Optional)", 
         "start_btn": "Start Deep Crawl",
         "error_url": "Invalid URL format",
@@ -293,41 +297,170 @@ TRANSLATIONS = {
         "visual_sim_title": "Visual Experience Simulation:",
 
         # Issues
-        "lcp_issue": "LCP (Largest Contentful Paint) Fails", "lcp_issue_desc": "LCP is {:.2f}s (Target <2.5s). Main content takes too long to appear.", "lcp_issue_impact": "LCP is a core ranking factor. Slow loading speeds significantly increase bounce rates and lower search rankings.", "lcp_issue_sugg": "Optimize image sizes (use WebP), implement a CDN, defer non-critical JavaScript, and preload the LCP element.",
-        "cls_issue": "CLS (Cumulative Layout Shift) Fails", "cls_issue_desc": "CLS score is {:.3f} (Target <0.1). Elements on the page shift unexpectedly during loading.", "cls_issue_impact": "A Core Web Vital ranking factor. Visual instability frustrates users and can lead to accidental clicks, damaging brand reputation.", "cls_issue_sugg": "Set explicit width and height attributes for all images and videos, and avoid inserting dynamic content above the fold.",
-        "inp_issue": "INP (Interaction to Next Paint) Fails", "inp_issue_desc": "INP is {}ms (Target <200ms). The page is unresponsive to user clicks or interactions.", "inp_issue_impact": "A new Core Web Vital. High latency makes the site feel 'broken' or sluggish, severely impacting user conversion rates.", "inp_issue_sugg": "Reduce main-thread blocking, break up Long Tasks, and optimize complex JavaScript event handlers.",
+        "lcp_issue": "LCP (Largest Contentful Paint) Fails", 
+        "lcp_issue_desc": "LCP is {:.2f}s (Target <2.5s). Main content takes too long to appear.", 
+        "lcp_issue_impact": "LCP is a core ranking factor. Slow loading speeds significantly increase bounce rates and lower search rankings.", 
+        "lcp_issue_sugg": "Optimize image sizes (use WebP), implement a CDN, defer non-critical JavaScript, and preload the LCP element.",
+        
+        "cls_issue": "CLS (Cumulative Layout Shift) Fails", 
+        "cls_issue_desc": "CLS score is {:.3f} (Target <0.1). Elements on the page shift unexpectedly during loading.", 
+        "cls_issue_impact": "A Core Web Vital ranking factor. Visual instability frustrates users and can lead to accidental clicks, damaging brand reputation.", 
+        "cls_issue_sugg": "Set explicit width and height attributes for all images and videos, and avoid inserting dynamic content above the fold.",
+        
+        "inp_issue": "INP (Interaction to Next Paint) Fails", 
+        "inp_issue_desc": "INP is {}ms (Target <200ms). The page is unresponsive to user clicks or interactions.", 
+        "inp_issue_impact": "A new Core Web Vital. High latency makes the site feel 'broken' or sluggish, severely impacting user conversion rates.", 
+        "inp_issue_sugg": "Reduce main-thread blocking, break up Long Tasks, and optimize complex JavaScript event handlers.",
 
-        "no_robots": "Missing Robots.txt", "no_robots_desc": "The robots.txt file was not found in the root directory, or the server returned an error.", "no_robots_impact": "Search engines may index useless or admin pages, wasting your crawl budget and server resources.", "no_robots_sugg": "Create a standard robots.txt file in the root directory and ensure it is publicly accessible.",
-        "robots_bad_rule": "Robots.txt Blocking", "robots_bad_rule_desc": "A global blocking rule (Disallow: /) was detected.", "robots_bad_rule_impact": "This prevents search engines from crawling your entire site, resulting in total de-indexing and zero organic traffic.", "robots_bad_rule_sugg": "Remove the 'Disallow: /' rule immediately to allow crawling.",
-        "robots_no_sitemap": "Sitemap Missing in Robots", "robots_no_sitemap_desc": "The location of the Sitemap XML is not specified in the robots.txt file.", "robots_no_sitemap_impact": "This slows down the discovery of new pages and content updates, especially for larger websites.", "robots_no_sitemap_sugg": "Add a 'Sitemap: [URL]' directive to the bottom of your robots.txt file.",
-        "no_sitemap": "Sitemap Failed", "no_sitemap_desc": "Unable to access the Sitemap file (403 Forbidden or 404 Not Found).", "no_sitemap_impact": "Search engines will struggle to find deep links or orphan pages, leading to poor indexing coverage.", "no_sitemap_sugg": "Verify the Sitemap URL is correct and that server permissions allow external access.",
-        "sitemap_invalid": "Invalid Sitemap", "sitemap_invalid_desc": "XML parsing failed. The file format does not adhere to the standard protocol.", "sitemap_invalid_impact": "Search engines cannot read the links inside, rendering the Sitemap completely useless.", "sitemap_invalid_sugg": "Validate your XML syntax to ensure there are no unclosed tags or invalid characters.",
-        "no_favicon": "Missing Favicon", "no_favicon_desc": "No Favicon icon was detected on the homepage.", "no_favicon_impact": "Reduces brand visibility in browser tabs and lowers the Click-Through Rate (CTR) in search results.", "no_favicon_sugg": "Create a .ico or .png icon and link it in the <head> section.",
-        "duplicate": "Duplicate Content", "duplicate_desc": "Exact duplicate content found without a proper canonical tag pointing to the original.", "duplicate_impact": "Causes keyword cannibalization and dilutes link equity, preventing both pages from ranking well.", "duplicate_sugg": "Choose a master URL and add a rel='canonical' tag on all duplicate versions pointing to it.",
-        "http_3xx": "Redirect Chain", "http_3xx_desc": "Internal link triggers a redirect (Chain: {}).", "http_3xx_impact": "Wastes crawl budget, adds latency to page load, and dilutes the link equity passed to the destination.", "http_3xx_sugg": "Update the internal link to point directly to the final destination URL.",
-        "http_4xx": "Broken Link", "http_4xx_desc": "Internal link returns a 4xx error (e.g., 404 Not Found).", "http_4xx_impact": "Creates a bad user experience, breaks the flow of link equity, and may cause indexed pages to be dropped.", "http_4xx_sugg": "Fix the broken link or remove it.",
-        "http_5xx": "Server Error", "http_5xx_desc": "Server returned a 5xx error (e.g., 500 Internal Server Error).", "http_5xx_impact": "Signals server instability. Googlebot will reduce the crawl rate of your site to avoid overloading it.", "http_5xx_sugg": "Check server error logs and ensure database stability.",
-        "hreflang_invalid": "Invalid Hreflang", "hreflang_invalid_desc": "The language code format does not comply with ISO 639-1 standards.", "hreflang_invalid_impact": "Google cannot identify the target language, causing international targeting to fail.", "hreflang_invalid_sugg": "Use standard ISO codes (e.g., 'en-US' instead of 'en_US').",
-        "hreflang_no_default": "No x-default", "hreflang_no_default_desc": "Missing 'x-default' fallback attribute.", "hreflang_no_default_impact": "Users from unspecified regions may be served the wrong language version.", "hreflang_no_default_sugg": "Add an hreflang='x-default' tag to specify the default version.",
-        "alt_bad_quality": "Bad Alt Text", "alt_bad_quality_desc": "Alt text uses filenames or generic words like 'image'.", "alt_bad_quality_impact": "Search engines cannot understand the image context, hurting Image SEO and accessibility.", "alt_bad_quality_sugg": "Use descriptive text that accurately describes the image content.",
-        "anchor_bad_quality": "Bad Anchor", "anchor_bad_quality_desc": "Generic anchor text found (e.g., 'Click here').", "anchor_bad_quality_impact": "Fails to pass keyword relevance to the target page, reducing its ranking potential.", "anchor_bad_quality_sugg": "Use descriptive keywords in the anchor text.",
-        "cls_risk": "CLS Risk (Static)", "cls_risk_desc": "Images missing width or height attributes detected.", "cls_risk_impact": "Images will push content down as they load, causing layout shifts and hurting Core Web Vitals.", "cls_risk_sugg": "Explicitly set width and height attributes on all image tags.",
-        "missing_title": "Missing Title", "missing_title_desc": "No <title> tag found in the page code.", "missing_title_impact": "Title is the most important on-page SEO factor. Missing it causes severe ranking loss.", "missing_title_sugg": "Add a unique, keyword-rich title to every page.",
-        "short_title": "Title Short", "short_title_desc": "Title is too short to be effective.", "short_title_impact": "Missed opportunity to target relevant keywords and attract clicks.", "short_title_sugg": "Expand the title to 30-60 characters, including your brand name.",
-        "long_title": "Title Long", "long_title_desc": "Title exceeds 60 characters.", "long_title_impact": "The title will be truncated in search results, reducing readability and CTR.", "long_title_sugg": "Shorten the title to under 60 characters, keeping important keywords at the front.",
-        "missing_desc": "Missing Description", "missing_desc_desc": "No meta description tag found.", "missing_desc_impact": "Google will generate a snippet from page text, which is often irrelevant and lowers CTR.", "missing_desc_sugg": "Add a compelling meta description that summarizes the page content.",
-        "short_desc": "Description Short", "short_desc_desc": "Description content is too thin.", "short_desc_impact": "Fails to provide enough context to entice users to click.", "short_desc_sugg": "Expand the description to 120-160 characters with a call to action.",
-        "missing_h1": "Missing H1", "missing_h1_desc": "No <h1> heading tag found.", "missing_h1_impact": "Search engines struggle to identify the main topic of the page.", "missing_h1_sugg": "Ensure every page has exactly one H1 tag describing the main topic.",
-        "missing_viewport": "No Viewport", "missing_viewport_desc": "Mobile viewport meta tag is missing.", "missing_viewport_impact": "The page is not mobile-friendly. Google Mobile-First Indexing will severely penalize it.", "missing_viewport_sugg": "Add the standard viewport meta tag to the <head>.",
-        "missing_canonical": "No Canonical", "missing_canonical_desc": "Missing canonical tag.", "missing_canonical_impact": "High risk of duplicate content issues, especially with URL parameters.", "missing_canonical_sugg": "Add a self-referencing canonical tag to all pages.",
-        "missing_jsonld": "No Schema", "missing_jsonld_desc": "No JSON-LD structured data found.", "missing_jsonld_impact": "Missed opportunity for Rich Snippets (e.g., Stars, Price) which boost CTR.", 
+        "no_robots": "Missing Robots.txt", 
+        "no_robots_desc": "The robots.txt file was not found in the root directory, or the server returned an error.", 
+        "no_robots_impact": "Search engines may index useless or admin pages, wasting your crawl budget and server resources.", 
+        "no_robots_sugg": "Create a standard robots.txt file in the root directory and ensure it is publicly accessible.",
+        
+        "robots_bad_rule": "Robots.txt Blocking", 
+        "robots_bad_rule_desc": "A global blocking rule (Disallow: /) was detected.", 
+        "robots_bad_rule_impact": "This prevents search engines from crawling your entire site, resulting in total de-indexing and zero organic traffic.", 
+        "robots_bad_rule_sugg": "Remove the 'Disallow: /' rule immediately to allow crawling.",
+        
+        "robots_no_sitemap": "Sitemap Missing in Robots", 
+        "robots_no_sitemap_desc": "The location of the Sitemap XML is not specified in the robots.txt file.", 
+        "robots_no_sitemap_impact": "This slows down the discovery of new pages and content updates, especially for larger websites.", 
+        "robots_no_sitemap_sugg": "Add a 'Sitemap: [URL]' directive to the bottom of your robots.txt file.",
+        
+        "no_sitemap": "Sitemap Failed", 
+        "no_sitemap_desc": "Unable to access the Sitemap file (403 Forbidden or 404 Not Found).", 
+        "no_sitemap_impact": "Search engines will struggle to find deep links or orphan pages, leading to poor indexing coverage.", 
+        "no_sitemap_sugg": "Verify the Sitemap URL is correct and that server permissions allow external access.",
+        
+        "sitemap_invalid": "Invalid Sitemap", 
+        "sitemap_invalid_desc": "XML parsing failed. The file format does not adhere to the standard protocol.", 
+        "sitemap_invalid_impact": "Search engines cannot read the links inside, rendering the Sitemap completely useless.", 
+        "sitemap_invalid_sugg": "Validate your XML syntax to ensure there are no unclosed tags or invalid characters.",
+        
+        "no_favicon": "Missing Favicon", 
+        "no_favicon_desc": "No Favicon icon was detected on the homepage.", 
+        "no_favicon_impact": "Reduces brand visibility in browser tabs and lowers the Click-Through Rate (CTR) in search results.", 
+        "no_favicon_sugg": "Create a .ico or .png icon and link it in the <head> section.",
+        
+        "duplicate": "Duplicate Content", 
+        "duplicate_desc": "Exact duplicate content found without a proper canonical tag pointing to the original.", 
+        "duplicate_impact": "Causes keyword cannibalization and dilutes link equity, preventing both pages from ranking well.", 
+        "duplicate_sugg": "Choose a master URL and add a rel='canonical' tag on all duplicate versions pointing to it.",
+        
+        "http_3xx": "Redirect Chain", 
+        "http_3xx_desc": "Internal link triggers a redirect (Chain: {}).", 
+        "http_3xx_impact": "Wastes crawl budget, adds latency to page load, and dilutes the link equity passed to the destination.", 
+        "http_3xx_sugg": "Update the internal link to point directly to the final destination URL.",
+        
+        "http_4xx": "Broken Link", 
+        "http_4xx_desc": "Internal link returns a 4xx error (e.g., 404 Not Found).", 
+        "http_4xx_impact": "Creates a bad user experience, breaks the flow of link equity, and may cause indexed pages to be dropped.", 
+        "http_4xx_sugg": "Fix the broken link or remove it.",
+        
+        "http_5xx": "Server Error", 
+        "http_5xx_desc": "Server returned a 5xx error (e.g., 500 Internal Server Error).", 
+        "http_5xx_impact": "Signals server instability. Googlebot will reduce the crawl rate of your site to avoid overloading it.", 
+        "http_5xx_sugg": "Check server error logs and ensure database stability.",
+        
+        "hreflang_invalid": "Invalid Hreflang", 
+        "hreflang_invalid_desc": "The language code format does not comply with ISO 639-1 standards.", 
+        "hreflang_invalid_impact": "Google cannot identify the target language, causing international targeting to fail.", 
+        "hreflang_invalid_sugg": "Use standard ISO codes (e.g., 'en-US' instead of 'en_US').",
+        
+        "hreflang_no_default": "No x-default", 
+        "hreflang_no_default_desc": "Missing 'x-default' fallback attribute.", 
+        "hreflang_no_default_impact": "Users from unspecified regions may be served the wrong language version.", 
+        "hreflang_no_default_sugg": "Add an hreflang='x-default' tag to specify the default version.",
+        
+        "alt_bad_quality": "Bad Alt Text", 
+        "alt_bad_quality_desc": "Alt text uses filenames or generic words like 'image'.", 
+        "alt_bad_quality_impact": "Search engines cannot understand the image context, hurting Image SEO and accessibility.", 
+        "alt_bad_quality_sugg": "Use descriptive text that accurately describes the image content.",
+        
+        "anchor_bad_quality": "Bad Anchor", 
+        "anchor_bad_quality_desc": "Generic anchor text found (e.g., 'Click here').", 
+        "anchor_bad_quality_impact": "Fails to pass keyword relevance to the target page, reducing its ranking potential.", 
+        "anchor_bad_quality_sugg": "Use descriptive keywords in the anchor text.",
+        
+        "cls_risk": "CLS Risk (Static)", 
+        "cls_risk_desc": "Images missing width or height attributes detected.", 
+        "cls_risk_impact": "Images will push content down as they load, causing layout shifts and hurting Core Web Vitals.", 
+        "cls_risk_sugg": "Explicitly set width and height attributes on all image tags.",
+        
+        "missing_title": "Missing Title", 
+        "missing_title_desc": "No <title> tag found in the page code.", 
+        "missing_title_impact": "Title is the most important on-page SEO factor. Missing it causes severe ranking loss.", 
+        "missing_title_sugg": "Add a unique, keyword-rich title to every page.",
+        
+        "short_title": "Title Short", 
+        "short_title_desc": "Title is too short to be effective.", 
+        "short_title_impact": "Missed opportunity to target relevant keywords and attract clicks.", 
+        "short_title_sugg": "Expand the title to 30-60 characters, including your brand name.",
+        
+        "long_title": "Title Long", 
+        "long_title_desc": "Title exceeds 60 characters.", 
+        "long_title_impact": "The title will be truncated in search results, reducing readability and CTR.", 
+        "long_title_sugg": "Shorten the title to under 60 characters, keeping important keywords at the front.",
+        
+        "missing_desc": "Missing Description", 
+        "missing_desc_desc": "No meta description tag found.", 
+        "missing_desc_impact": "Google will generate a snippet from page text, which is often irrelevant and lowers CTR.", 
+        "missing_desc_sugg": "Add a compelling meta description that summarizes the page content.",
+        
+        "short_desc": "Description Short", 
+        "short_desc_desc": "Description content is too thin.", 
+        "short_desc_impact": "Fails to provide enough context to entice users to click.", 
+        "short_desc_sugg": "Expand the description to 120-160 characters with a call to action.",
+        
+        "missing_h1": "Missing H1", 
+        "missing_h1_desc": "No <h1> heading tag found.", 
+        "missing_h1_impact": "Search engines struggle to identify the main topic of the page.", 
+        "missing_h1_sugg": "Ensure every page has exactly one H1 tag describing the main topic.",
+        
+        "missing_viewport": "No Viewport", 
+        "missing_viewport_desc": "Mobile viewport meta tag is missing.", 
+        "missing_viewport_impact": "The page is not mobile-friendly. Google Mobile-First Indexing will severely penalize it.", 
+        "missing_viewport_sugg": "Add the standard viewport meta tag to the <head>.",
+        
+        "missing_canonical": "No Canonical", 
+        "missing_canonical_desc": "Missing canonical tag.", 
+        "missing_canonical_impact": "High risk of duplicate content issues, especially with URL parameters.", 
+        "missing_canonical_sugg": "Add a self-referencing canonical tag to all pages.",
+        
+        "missing_jsonld": "No Schema", 
+        "missing_jsonld_desc": "No JSON-LD structured data found.", 
+        "missing_jsonld_impact": "Missed opportunity for Rich Snippets (e.g., Stars, Price) which boost CTR.", 
         "missing_jsonld_sugg": "Add JSON-LD schema based on page type: {}.",
-        "missing_hreflang": "No Hreflang", "missing_hreflang_desc": "No language targeting tags found.", "missing_hreflang_impact": "Poor international targeting.", "missing_hreflang_sugg": "Add hreflang tags to the HTML head or Sitemap.",
-        "soft_404": "Soft 404", "soft_404_desc": "Page returns a 200 OK status but displays an error message.", "soft_404_impact": "Wastes crawl budget on invalid pages and confuses search engines.", "soft_404_sugg": "Configure the server to return a 404 Not Found status code.",
-        "missing_alt": "Missing Alt", "missing_alt_desc": "Images lack alternative text attributes.", "missing_alt_impact": "Bad for accessibility and prevents images from ranking in Image Search.", "missing_alt_sugg": "Add descriptive alt text to all relevant images.",
-        "js_links": "JS Links", "js_links_desc": "Uncrawlable JavaScript links found.", "js_links_impact": "Search engines cannot follow these links, leaving pages orphaned.", "js_links_sugg": "Replace with standard <a href> tags.",
-        "url_underscore": "URL Underscores", "url_underscore_desc": "URL uses underscores to separate words.", "url_underscore_impact": "Google treats underscores as joiners, not separators, hurting keyword parsing.", "url_underscore_sugg": "Use hyphens (-) instead of underscores.",
-        "url_uppercase": "URL Uppercase", "url_uppercase_desc": "URL contains uppercase letters.", "url_uppercase_impact": "Can lead to duplicate content issues on case-sensitive servers.", "url_uppercase_sugg": "Force all URLs to be lowercase."
+        
+        "missing_hreflang": "No Hreflang", 
+        "missing_hreflang_desc": "No language targeting tags found.", 
+        "missing_hreflang_impact": "Poor international targeting.", 
+        "missing_hreflang_sugg": "Add hreflang tags to the HTML head or Sitemap.",
+        
+        "soft_404": "Soft 404", 
+        "soft_404_desc": "Page returns a 200 OK status but displays an error message.", 
+        "soft_404_impact": "Wastes crawl budget on invalid pages and confuses search engines.", 
+        "soft_404_sugg": "Configure the server to return a 404 Not Found status code.",
+        
+        "missing_alt": "Missing Alt", 
+        "missing_alt_desc": "Images lack alternative text attributes.", 
+        "missing_alt_impact": "Bad for accessibility and prevents images from ranking in Image Search.", 
+        "missing_alt_sugg": "Add descriptive alt text to all relevant images.",
+        
+        "js_links": "JS Links", 
+        "js_links_desc": "Uncrawlable JavaScript links found.", 
+        "js_links_impact": "Search engines cannot follow these links, leaving pages orphaned.", 
+        "js_links_sugg": "Replace with standard <a href> tags.",
+        
+        "url_underscore": "URL Underscores", 
+        "url_underscore_desc": "URL uses underscores to separate words.", 
+        "url_underscore_impact": "Google treats underscores as joiners, not separators, hurting keyword parsing.", 
+        "url_underscore_sugg": "Use hyphens (-) instead of underscores.",
+        
+        "url_uppercase": "URL Uppercase", 
+        "url_uppercase_desc": "URL contains uppercase letters.", 
+        "url_uppercase_impact": "Can lead to duplicate content issues on case-sensitive servers.", 
+        "url_uppercase_sugg": "Force all URLs to be lowercase."
     }
 }
 
@@ -370,21 +503,20 @@ def check_cwv_issues(cwv_data, url, label=""):
     if not cwv_data or "error" in cwv_data: return issues
     category_key = "cwv_performance"
     
-    # Thresholds: Good < 2.5, Poor > 4.0
     lcp = cwv_data.get("LCP", 0)
     if lcp > 2.5:
         issues.append({
             "id": "lcp_issue", "category": category_key, "severity": "Critical" if lcp > 4.0 else "High",
             "url": url, "args": [lcp], "examples": [f"{url} ({lcp:.2f}s) {label}"] 
         })
-    # Thresholds: Good < 200, Poor > 500
+    
     inp = cwv_data.get("INP", 0)
     if inp > 200:
         issues.append({
             "id": "inp_issue", "category": category_key, "severity": "Critical" if inp > 500 else "High",
             "url": url, "args": [inp], "examples": [f"{url} ({inp}ms) {label}"]
         })
-    # Thresholds: Good < 0.1, Poor > 0.25
+
     cls = cwv_data.get("CLS", 0)
     if cls > 0.1:
         issues.append({
@@ -393,29 +525,37 @@ def check_cwv_issues(cwv_data, url, label=""):
         })
     return issues
 
-def check_site_level_assets(start_url, manual_robots=None, manual_sitemaps=None):
+def check_site_level_assets(start_url, lang="zh", check_robots=True, crawl_sitemap_flag=True, manual_sitemaps=None):
     issues = []
     sitemap_has_hreflang = False
     base_url = f"{urlparse(start_url).scheme}://{urlparse(start_url).netloc}"
     headers = get_browser_headers()
-
-    # Robots
-    robots_url = manual_robots if manual_robots else urljoin(base_url, "/robots.txt")
-    try:
-        r = requests.get(robots_url, headers=headers, timeout=10, allow_redirects=True, stream=True, verify=False)
-        if r.status_code != 200:
+    
+    # 1. Robots.txt Logic
+    robots_url = urljoin(base_url, "/robots.txt")
+    if check_robots:
+        try:
+            r = requests.get(robots_url, headers=headers, timeout=10, allow_redirects=True, stream=True, verify=False)
+            if r.status_code != 200:
+                issues.append({"id": "no_robots", "category": "access", "severity": "Medium", "url": robots_url, "examples": [robots_url]})
+            else:
+                content = r.text.lower()
+                if "disallow: /" in content and "allow:" not in content:
+                    issues.append({"id": "robots_bad_rule", "category": "access", "severity": "Critical", "url": robots_url, "examples": [robots_url]})
+                if "sitemap:" not in content:
+                    issues.append({"id": "robots_no_sitemap", "category": "access", "severity": "Low", "url": robots_url, "examples": [robots_url]})
+                
+                # Auto-discover Sitemap from robots.txt
+                if crawl_sitemap_flag:
+                    sitemaps_in_robots = re.findall(r'sitemap:\s*(https?://\S+)', content, re.IGNORECASE)
+                    if sitemaps_in_robots:
+                        if manual_sitemaps is None: manual_sitemaps = []
+                        manual_sitemaps.extend(sitemaps_in_robots)
+            r.close()
+        except: 
             issues.append({"id": "no_robots", "category": "access", "severity": "Medium", "url": robots_url, "examples": [robots_url]})
-        else:
-            content = r.text.lower()
-            if "disallow: /" in content and "allow:" not in content:
-                 issues.append({"id": "robots_bad_rule", "category": "access", "severity": "Critical", "url": robots_url, "examples": [robots_url]})
-            if "sitemap:" not in content:
-                 issues.append({"id": "robots_no_sitemap", "category": "access", "severity": "Low", "url": robots_url, "examples": [robots_url]})
-        r.close()
-    except: 
-        issues.append({"id": "no_robots", "category": "access", "severity": "Medium", "url": robots_url, "examples": [robots_url]})
 
-    # Sitemap
+    # 2. Sitemap Logic
     sitemap_urls = manual_sitemaps if manual_sitemaps else [urljoin(base_url, "/sitemap.xml")]
     any_valid = False
     for sm_url in sitemap_urls:
@@ -438,7 +578,7 @@ def check_site_level_assets(start_url, manual_robots=None, manual_sitemaps=None)
     if not any_valid and not manual_sitemaps:
          issues.append({"id": "no_sitemap", "category": "access", "severity": "Low", "url": sitemap_urls[0], "examples": [sitemap_urls[0]]})
 
-    # Favicon
+    # 3. Favicon
     try:
         r = requests.get(urljoin(base_url, "/favicon.ico"), headers=headers, timeout=5, verify=False)
         if r.status_code != 200 or int(r.headers.get('content-length', 0)) == 0:
@@ -538,12 +678,12 @@ def analyze_page(url, content, status, sitemap_has_hreflang):
         "Content_Hash": hashlib.md5(soup.get_text().encode('utf-8')).hexdigest()
     }, issues
 
-def crawl_website(start_url, max_pages, lang, manual_robots, manual_sitemaps, psi_key, list_url=None, detail_url=None):
+def crawl_website(start_url, max_pages, lang, manual_robots, manual_sitemaps, psi_key, list_url=None, detail_url=None, check_robots=True, crawl_sitemap=True):
     visited = set()
     seen_hashes = {} 
     seen_urls = set()
     
-    # Queue init
+    # Priority Queue
     queue = [start_url]
     seen_urls.add(start_url)
     if list_url and is_valid_url(list_url):
@@ -563,10 +703,10 @@ def crawl_website(start_url, max_pages, lang, manual_robots, manual_sitemaps, ps
     progress_bar = st.progress(0, text="Initializing...")
     sitemap_has_hreflang = False
     
-    # 1. Site Checks
+    # 1. Site Checks (Pass flags)
     try:
         site_issues, sitemap_has_hreflang = check_site_level_assets(
-            start_url, manual_robots, manual_sitemaps
+            start_url, lang, check_robots, crawl_sitemap, manual_sitemaps
         )
         all_issues.extend(site_issues)
         st.session_state['sitemap_hreflang_found'] = sitemap_has_hreflang
@@ -633,6 +773,7 @@ def crawl_website(start_url, max_pages, lang, manual_robots, manual_sitemaps, ps
                         else:
                             is_handled = current_canonical and current_canonical != current_url
                             if not is_handled:
+                                # 重复内容
                                 all_issues.append({
                                     "id": "duplicate", "category": "indexability", 
                                     "severity": "High", 
@@ -880,6 +1021,7 @@ def create_styled_pptx(slides_data, lang):
         is_serp = any(k in s['id'] for k in ["title", "desc", "favicon", "alt", "lcp", "inp", "cls"])
         is_rich = "jsonld" in s['id']
         is_code = "js_links" in s['id']
+        is_3xx = "3xx" in s['id']
         
         ev = s.get('example_evidence', '')
         ex_url = s['examples'][0] if s['examples'] else "example.com"
@@ -891,7 +1033,8 @@ def create_styled_pptx(slides_data, lang):
             draw_rich_snippet_preview(slide, ex_url)
         elif is_serp:
             draw_serp_preview(slide, t_data['title'], ev, ex_url)
-
+        # elif is_3xx: 
+             # draw_redirect_flow(slide) # Logic preserved for future
 
     out = BytesIO()
     prs.save(out)
@@ -946,7 +1089,9 @@ if menu_key == "input":
     with c2: max_pages = st.number_input(ui.get("max_pages_label", "Max Pages"), min_value=1, max_value=1000, value=100)
     
     with st.expander(ui.get("adv_settings", "Advanced")):
-        manual_robots = st.text_input(ui.get("manual_robots", "Manual Robots.txt"), placeholder="https://example.com/robots.txt")
+        check_robots_flag = st.checkbox(ui["check_robots_label"], value=True)
+        crawl_sitemap_flag = st.checkbox(ui["crawl_sitemap_label"], value=True)
+        # Old input removed
         manual_sitemaps_text = st.text_area(ui.get("manual_sitemaps", "Manual Sitemaps"), placeholder="https://example.com/sitemap.xml")
         manual_sitemaps = [s.strip() for s in manual_sitemaps_text.split('\n') if s.strip()]
     
@@ -961,7 +1106,10 @@ if menu_key == "input":
             st.error(ui["error_url"])
         else:
             with st.spinner(ui["spinner_crawl"].format(max_pages)):
-                data, issues, error_msg = crawl_website(target_url, max_pages, lang, manual_robots, manual_sitemaps, psi_key, psi_list_url, psi_detail_url)
+                data, issues, error_msg = crawl_website(
+                    target_url, max_pages, lang, None, manual_sitemaps, psi_key, 
+                    psi_list_url, psi_detail_url, check_robots_flag, crawl_sitemap_flag
+                )
                 if not data:
                     st.error(ui["error_no_data"].format(error_msg or "Unknown Error"))
                 else:
@@ -1091,7 +1239,6 @@ elif menu_key == "ppt":
                 if "Duplicate" in ex_url: ex_url = ex_url.split("Duplicate of:")[0].strip()
 
                 if is_code:
-                    draw_code_preview(slide) # Placeholder for web view
                     st.code('<a href="javascript:void(0)">Click Here</a>', language="html")
                 elif is_rich:
                     st.markdown(f"**{ui.get('rich_sim_title', 'Rich Result Preview')}**")
