@@ -119,7 +119,7 @@ def get_issue_priority(issue_id):
 TRANSLATIONS = {
     "zh": {
         "sidebar_title": "🔍 AuditAI Pro",
-        "sidebar_caption": "旗舰审计版 v14.10 (Stable)",
+        "sidebar_caption": "旗舰审计版 v14.10 (Fixed)",
         "nav_label": "功能导航",
         "nav_options": ["输入网址", "仪表盘", "数据矩阵", "PPT 生成器"],
         "lang_label": "语言 / Language",
@@ -141,7 +141,7 @@ TRANSLATIONS = {
         "psi_error": "API 调用失败或无 CrUX 数据",
         
         "input_header": "开始深度审计",
-        "input_info": "说明: v14.10 修复了代码缩进错误，确保 PPT 生成功能正常。",
+        "input_info": "说明: v14.10 修复了缩进错误，功能完备。",
         "input_label": "输入目标网址 (首页)",
         "input_placeholder": "https://example.com",
         "max_pages_label": "最大爬取页面数",
@@ -168,7 +168,7 @@ TRANSLATIONS = {
         "kpi_critical": "严重问题",
         "chart_issues": "问题类型分布",
         "chart_no_issues": "未发现明显问题。",
-        "chart_status": "HTTP Status Codes",
+        "chart_status": "HTTP 状态码分布",
         "cwv_title": "首页核心 Web 指标 (Core Web Vitals) - 真实数据",
         "cwv_source": "数据来源: Google Chrome User Experience Report (CrUX) - 仅首页",
         
@@ -291,7 +291,7 @@ TRANSLATIONS = {
     },
     "en": {
         "sidebar_title": "🔍 AuditAI Pro",
-        "sidebar_caption": "Deep Audit Edition v14.4",
+        "sidebar_caption": "Deep Audit Edition v14.2",
         "nav_label": "Navigation",
         "nav_options": ["Input URL", "Dashboard", "Data Matrix", "PPT Generator"],
         "lang_label": "Language / 语言",
@@ -314,7 +314,7 @@ TRANSLATIONS = {
         "psi_error": "API Failed or No CrUX Data",
         
         "input_header": "Start Deep Audit",
-        "input_info": "Note: v14.4 features fixed indentation and Baidu SEO checks.",
+        "input_info": "Note: v14.2 features Manual URL input.",
         "input_label": "Target URL",
         "input_placeholder": "https://example.com",
         "max_pages_label": "Max Pages to Crawl",
@@ -638,8 +638,6 @@ def check_cwv_issues(cwv_data, url, label=""):
     if not cwv_data or "error" in cwv_data: return issues
     category_key = "cwv_performance"
     
-    # Thresholds
-    # LCP: Good < 2.5, Poor > 4.0
     lcp = cwv_data.get("LCP", 0)
     if lcp > 2.5:
         issues.append({
@@ -647,7 +645,6 @@ def check_cwv_issues(cwv_data, url, label=""):
             "url": url, "args": [lcp], "examples": [f"{url} ({lcp:.2f}s) {label}"] 
         })
     
-    # INP: Good < 200, Poor > 500
     inp = cwv_data.get("INP", 0)
     if inp > 200:
         issues.append({
@@ -655,7 +652,6 @@ def check_cwv_issues(cwv_data, url, label=""):
             "url": url, "args": [inp], "examples": [f"{url} ({inp}ms) {label}"]
         })
 
-    # CLS: Good < 0.1, Poor > 0.25
     cls = cwv_data.get("CLS", 0)
     if cls > 0.1:
         issues.append({
@@ -663,7 +659,6 @@ def check_cwv_issues(cwv_data, url, label=""):
             "url": url, "args": [cls], "examples": [f"{url} ({cls:.3f}) {label}"]
         })
     
-    # FCP: Good <= 1.8
     fcp = cwv_data.get("FCP", 0)
     if fcp > 1.8:
         issues.append({
@@ -681,7 +676,6 @@ def check_site_level_assets(start_url, lang="zh", check_robots=True, crawl_sitem
     base_url = f"{urlparse(start_url).scheme}://{initial_netloc}"
     headers = get_browser_headers()
     
-    # 1. Robots.txt Logic
     robots_url = urljoin(base_url, "/robots.txt")
     if check_robots:
         try:
@@ -707,7 +701,6 @@ def check_site_level_assets(start_url, lang="zh", check_robots=True, crawl_sitem
                 if "sitemap:" not in content:
                     issues.append({"id": "robots_no_sitemap", "category": "access", "severity": "Low", "url": robots_url, "examples": [robots_url]})
                 
-                # Auto-discover Sitemap
                 if crawl_sitemap_flag:
                     sitemaps_in_robots = re.findall(r'sitemap:\s*(https?://\S+)', content, re.IGNORECASE)
                     if sitemaps_in_robots:
@@ -717,7 +710,6 @@ def check_site_level_assets(start_url, lang="zh", check_robots=True, crawl_sitem
         except: 
             issues.append({"id": "no_robots", "category": "access", "severity": "Medium", "url": robots_url, "examples": [robots_url]})
 
-    # 2. Sitemap Logic
     sitemap_urls = manual_sitemaps if manual_sitemaps else [urljoin(base_url, "/sitemap.xml")]
     any_valid = False
     for sm_url in sitemap_urls:
@@ -740,14 +732,12 @@ def check_site_level_assets(start_url, lang="zh", check_robots=True, crawl_sitem
     if not any_valid and not manual_sitemaps:
          issues.append({"id": "no_sitemap", "category": "access", "severity": "Low", "url": sitemap_urls[0], "examples": [sitemap_urls[0]]})
 
-    # 3. Favicon
     try:
         r = requests.get(urljoin(base_url, "/favicon.ico"), headers=headers, timeout=5, verify=False)
         if r.status_code != 200 or int(r.headers.get('content-length', 0)) == 0:
             issues.append({"id": "no_favicon", "category": "image_ux", "severity": "Low", "url": base_url, "examples": [base_url]})
     except: pass
     
-    # 4. Server Location (Baidu Mode)
     if baidu_mode:
         cc, country_name = check_server_location(start_url)
         if cc and cc != 'CN':
@@ -759,29 +749,20 @@ def analyze_page(url, content, status, sitemap_has_hreflang, baidu_mode=False):
     soup = BeautifulSoup(content, 'html.parser')
     issues = []
     
-    # Content
     title = soup.title.string.strip() if soup.title else None
-    
-    # Get Description
     desc = soup.find('meta', attrs={'name': 'description'})
     desc_content = desc['content'].strip() if desc else None
-
-    # Get H1
     h1 = soup.find('h1')
     h1_content = h1.get_text().strip() if h1 else None
     
-    # Get Canonical (Early extraction for logic)
     can_tag = soup.find('link', attrs={'rel': 'canonical'})
     can_url = can_tag['href'] if can_tag else None
 
-    # ONLY check content/technical issues for status 200
     if status == 200:
-        # --- LOGIC: Canonical Check ---
         is_self_canonical = True
         if can_url:
             def norm_u(u): return u.split('#')[0].rstrip('/')
             try:
-                # Resolve relative canonicals
                 abs_can = urljoin(url, can_url)
                 if norm_u(abs_can) != norm_u(url):
                     is_self_canonical = False
@@ -789,9 +770,8 @@ def analyze_page(url, content, status, sitemap_has_hreflang, baidu_mode=False):
 
         if not can_url:
             issues.append({"id": "missing_canonical", "category": "indexability", "severity": "Medium", "url": url})
-            is_self_canonical = True # Treat as self-canonical for auditing
+            is_self_canonical = True
 
-        # Hreflang (Independent of canonical)
         hreflangs = soup.find_all('link', hreflang=True)
         if hreflangs:
             has_x_default = False
@@ -802,7 +782,6 @@ def analyze_page(url, content, status, sitemap_has_hreflang, baidu_mode=False):
                 if code.lower() == 'x-default': has_x_default = True
                 if not pat.match(code): invalid.append(code)
             if invalid:
-                # Pass invalid code for visualization
                 issues.append({"id": "hreflang_invalid", "category": "indexability", "severity": "High", "url": url, "args": [", ".join(invalid[:3])]})
             if not has_x_default:
                 issues.append({"id": "hreflang_no_default", "category": "indexability", "severity": "Low", "url": url})
@@ -810,9 +789,7 @@ def analyze_page(url, content, status, sitemap_has_hreflang, baidu_mode=False):
              if is_self_canonical:
                 issues.append({"id": "missing_hreflang", "category": "indexability", "severity": "Low", "url": url})
 
-        # --- CONTENT & TECHNICAL CHECKS (Only for Self-Canonical Pages) ---
         if is_self_canonical:
-            # Technical
             if not soup.find('meta', attrs={'name': 'viewport'}):
                 issues.append({"id": "missing_viewport", "category": "technical", "severity": "Critical", "url": url})
             
@@ -824,15 +801,12 @@ def analyze_page(url, content, status, sitemap_has_hreflang, baidu_mode=False):
                  elif any(x in path for x in ["blog", "news"]): rec = "Article"
                  issues.append({"id": "missing_jsonld", "category": "technical", "severity": "Medium", "url": url, "args": [rec]})
 
-            # URL
             if '_' in url: issues.append({"id": "url_underscore", "category": "technical", "severity": "Low", "url": url})
             if any(c.isupper() for c in urlparse(url).path): issues.append({"id": "url_uppercase", "category": "technical", "severity": "Medium", "url": url})
             
-            # Access (JS Links - harmful regardless)
             if soup.find('a', href=lambda x: x and x.lower().startswith('javascript:')):
                 issues.append({"id": "js_links", "category": "access", "severity": "High", "url": url}) 
 
-            # Image UX & Static Performance
             imgs = soup.find_all('img')
             missing_alt = 0
             bad_alt = 0
@@ -847,13 +821,11 @@ def analyze_page(url, content, status, sitemap_has_hreflang, baidu_mode=False):
             if bad_alt > 0: issues.append({"id": "alt_bad_quality", "category": "image_ux", "severity": "Low", "url": url})
             if cls_risk > 0: issues.append({"id": "cls_risk", "category": "cwv_performance", "severity": "Medium", "url": url})
 
-            # Anchor Quality
             links = soup.find_all('a', href=True)
             bad_anchors = ["click here", "read more", "more"]
             if any(a.get_text().strip().lower() in bad_anchors for a in links):
                 issues.append({"id": "anchor_bad_quality", "category": "access", "severity": "Low", "url": url})
             
-            # --- Pixel-based Title Check ---
             if not title: 
                 issues.append({"id": "missing_title", "category": "content", "severity": "High", "url": url})
             else:
@@ -863,7 +835,6 @@ def analyze_page(url, content, status, sitemap_has_hreflang, baidu_mode=False):
                 elif px_w > 600:
                     issues.append({"id": "long_title", "category": "content", "severity": "Low", "url": url, "evidence": title, "args": [int(px_w)]})
 
-            # --- Pixel-based Desc Check ---
             if not desc_content: 
                 issues.append({"id": "missing_desc", "category": "content", "severity": "High", "url": url})
             else:
@@ -873,26 +844,20 @@ def analyze_page(url, content, status, sitemap_has_hreflang, baidu_mode=False):
 
             if not h1_content: issues.append({"id": "missing_h1", "category": "content", "severity": "High", "url": url})
 
-            # Soft 404 Check
             if (title and "not found" in title.lower()) or (soup.find('h1') and "not found" in soup.find('h1').get_text().lower()):
                 issues.append({"id": "soft_404", "category": "access", "severity": "Critical", "url": url})
         
-        # --- Baidu Mode Checks ---
         if baidu_mode:
-            # Check Meta Keywords
             keywords = soup.find('meta', attrs={'name': 'keywords'})
             if not keywords or not keywords.get('content', '').strip():
                  issues.append({"id": "missing_keywords", "category": "content", "severity": "Medium", "url": url})
             
-            # Check Baidu Tongji
             if "hm.baidu.com" not in str(soup):
                  issues.append({"id": "missing_baidu_stats", "category": "technical", "severity": "Low", "url": url})
             
-            # Baidu specific meta tags check
             if not soup.find('meta', attrs={'name': 'applicable-device'}):
                  issues.append({"id": "missing_applicable_device", "category": "technical", "severity": "Medium", "url": url})
             
-            # Check for no-transform
             has_no_transform = False
             for meta in soup.find_all('meta'):
                 if meta.get('http-equiv', '').lower() == 'cache-control' and 'no-transform' in meta.get('content', '').lower():
@@ -901,13 +866,10 @@ def analyze_page(url, content, status, sitemap_has_hreflang, baidu_mode=False):
             if not has_no_transform:
                  issues.append({"id": "missing_no_transform", "category": "technical", "severity": "Medium", "url": url})
             
-            # ICP Check
             page_text = soup.get_text()
             if "ICP备" not in page_text and "ICP证" not in page_text:
                  issues.append({"id": "missing_icp", "category": "technical", "severity": "High", "url": url})
             
-            # Chinese Content Check
-            # Count Chinese chars
             chinese_chars = len(re.findall(r'[\u4e00-\u9fa5]', page_text))
             total_chars = len(page_text.strip())
             if total_chars > 200 and (chinese_chars / total_chars) < 0.05:
@@ -929,7 +891,6 @@ def crawl_website(start_url, max_pages, lang, manual_robots, manual_sitemaps, ps
     seen_hashes = {} 
     seen_urls = set()
     
-    # Priority Queue
     queue = [start_url]
     seen_urls.add(start_url)
     if list_url and is_valid_url(list_url):
@@ -995,53 +956,42 @@ def crawl_website(start_url, max_pages, lang, manual_robots, manual_sitemaps, ps
         time.sleep(0.1)
         
         try:
-            # Request
             response = requests.get(url, headers=headers, timeout=10, allow_redirects=True, verify=False)
             current_url = response.url 
             
-            # **DYNAMIC DOMAIN CALIBRATION**
             if count == 1 and url == start_url:
                  start_netloc = urlparse(current_url).netloc.replace('www.', '')
 
             final_status = response.status_code
 
-            # 1. 3xx Chain Logging
             if response.history:
-                # Store full chain for visualization parsing
                 chain_list = [r.url for r in response.history] + [current_url]
-                
-                # Format Chain with Full Path logic
-                # Calculate Origin
                 origin_netloc = urlparse(chain_list[0]).netloc.replace('www.', '')
                 chain_display_parts = []
                 for u in chain_list:
                     u_obj = urlparse(u)
                     u_netloc = u_obj.netloc.replace('www.', '')
-                    
                     if u_netloc != origin_netloc:
-                        chain_display_parts.append(u) # Full URL for cross-domain
+                        chain_display_parts.append(u) 
                     else:
                         p = u_obj.path
                         if not p: p = "/"
-                        chain_display_parts.append(p) # Path for same domain
+                        chain_display_parts.append(p)
 
                 chain_str = " -> ".join(chain_display_parts)
                 all_issues.append({"id": "http_3xx", "category": "access", "severity": "Medium", "url": url, "args": [chain_str]})
 
-            # 2. 4xx/5xx
             if final_status >= 400:
                 is_5xx = final_status >= 500
                 all_issues.append({"id": "http_5xx" if is_5xx else "http_4xx", "category": "access", "severity": "Critical" if is_5xx else "High", "url": url, "args": [str(final_status)]})
 
             content_type = response.headers.get('Content-Type', '').lower()
             if 'text/html' in content_type:
-                # Double check for login via content
                 if 'type="password"' in response.text.lower():
-                     continue # Skip login page content check
+                     continue
 
                 page_data, page_issues = analyze_page(current_url, response.content, final_status, sitemap_has_hreflang, baidu_mode)
                 
-                # Deduplication & Data Storage
                 if final_status == 200:
                     current_hash = page_data['Content_Hash']
                     current_canonical = page_data['Canonical']
@@ -1049,12 +999,11 @@ def crawl_website(start_url, max_pages, lang, manual_robots, manual_sitemaps, ps
                     
                     if current_hash in seen_hashes:
                         original_url = seen_hashes[current_hash]
-                        # Fix: Check if URL is actually different (avoid self-duplicate flagging)
                         if current_url != original_url and not (current_canonical and current_canonical != current_url):
                             all_issues.append({
                                 "id": "duplicate", "category": "indexability", 
                                 "severity": "High", "url": current_url, 
-                                "meta": original_url # Raw URL
+                                "meta": original_url 
                             })
                     else:
                         seen_hashes[current_hash] = current_url
@@ -1064,24 +1013,20 @@ def crawl_website(start_url, max_pages, lang, manual_robots, manual_sitemaps, ps
                 
                 soup = BeautifulSoup(response.content, 'html.parser')
                 for a in soup.find_all('a', href=True):
-                    # Filter: No Fragment
                     raw_link = urljoin(current_url, a['href'])
                     link = raw_link.split('#')[0] 
                     
-                    # Enhanced Filtering Logic
                     link_parsed = urlparse(link)
                     link_netloc = link_parsed.netloc.replace('www.', '')
                     link_path = link_parsed.path
 
-                    # Check Domain
                     is_internal = False
-                    if not link_netloc: is_internal = True # Relative
+                    if not link_netloc: is_internal = True
                     elif allow_sub:
-                        is_internal = link_netloc.endswith(start_netloc) # Any subdomain
+                        is_internal = link_netloc.endswith(start_netloc)
                     else:
-                        is_internal = link_netloc == start_netloc # Strict match
+                        is_internal = link_netloc == start_netloc
 
-                    # Check Path
                     path_ok = True
                     if not allow_outside:
                         if not link_path.startswith(start_path): path_ok = False
