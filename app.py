@@ -117,7 +117,7 @@ def get_issue_priority(issue_id):
 TRANSLATIONS = {
     "zh": {
         "sidebar_title": "🔍 AuditAI Pro",
-        "sidebar_caption": "旗舰审计版 v15.2 (Fixed)",
+        "sidebar_caption": "旗舰审计版 v15.3 (Fixed)",
         "nav_label": "功能导航",
         "nav_options": ["输入网址", "仪表盘", "数据矩阵", "PPT 生成器"],
         "lang_label": "语言 / Language",
@@ -137,7 +137,7 @@ TRANSLATIONS = {
         "psi_success": "成功获取真实用户数据！",
         "psi_error": "API 调用失败或无 CrUX 数据",
         "input_header": "开始深度审计",
-        "input_info": "说明: v15.2 修复了缩进错误，包含百度 SEO、手动 Sitemap 解析等增强功能。",
+        "input_info": "说明: v15.3 修复了缩进错误，包含百度 SEO、手动 Sitemap 解析等增强功能。",
         "input_label": "输入目标网址 (首页)",
         "input_placeholder": "https://example.com",
         "max_pages_label": "最大爬取页面数",
@@ -211,15 +211,15 @@ TRANSLATIONS = {
         "robots_bad_rule": "Robots.txt 封禁风险", "robots_bad_rule_desc": "检测到全站封禁规则 (Disallow: /)，且未发现针对 Googlebot 的例外规则。", "robots_bad_rule_impact": "这将直接导致搜索引擎停止抓取并索引您的网站，所有自然搜索流量将归零。", "robots_bad_rule_sugg": "立即移除 'Disallow: /' 规则，或者为搜索引擎爬虫添加具体的 'Allow' 规则。",
         "robots_quality_issue": "Robots.txt 规则配置不当", "robots_quality_issue_desc": "Robots.txt 文件存在潜在问题：{}。", "robots_quality_issue_impact": "可能导致Googlebot行为异常（如误判屏蔽或渲染失败）。", "robots_quality_issue_sugg": "检查 Robots.txt，移除废弃指令（如 Noindex），并确保允许访问 CSS/JS 资源。",
         "robots_no_sitemap": "Robots 未声明 Sitemap", "robots_no_sitemap_desc": "robots.txt 文件中未指明 Sitemap XML 文件的位置。", "robots_no_sitemap_impact": "会降低搜索引擎发现新页面和更新旧内容的速度，尤其对于大型网站影响更明显。", "robots_no_sitemap_sugg": "在 robots.txt 文件底部添加一行：Sitemap: https://yourdomain.com/sitemap.xml",
-        "no_sitemap": "Sitemap Failed", "no_sitemap_desc": "无法访问 Sitemap 文件，服务器返回 4xx 或 5xx 错误。", "no_sitemap_impact": "搜索引擎难以发现深层链接或孤岛页面，导致整体收录率下降。", "no_sitemap_sugg": "检查 Sitemap 文件是否存在，以及服务器权限设置是否允许外部访问。",
+        "no_sitemap": "Sitemap Failed", "no_sitemap_desc": "Unable to access the Sitemap file (403 Forbidden or 404 Not Found).", "no_sitemap_impact": "Search engines will struggle to find deep links or orphan pages, leading to poor indexing coverage.", "no_sitemap_sugg": "Verify the Sitemap URL is correct and that server permissions allow external access.",
         "sitemap_invalid": "Sitemap 格式错误", "sitemap_invalid_desc": "XML 解析失败，文件格式不符合标准协议。", "sitemap_invalid_impact": "搜索引擎无法读取其中的链接，导致 Sitemap 完全失效。", "sitemap_invalid_sugg": "使用 XML 验证工具检查文件语法，确保没有未闭合的标签或非法字符。",
-        "no_favicon": "缺失 Favicon", "no_favicon_desc": "未在首页检测到 Favicon 图标。", "no_favicon_impact": "降低品牌在浏览器标签页和搜索结果页 (SERP) 中的辨识度，进而导致点击率 (CTR) 下降。", "no_favicon_sugg": "制作一个 .ico 或 .png 格式的图标，并在 <head> 中通过 <link rel='icon'> 引用。",
+        "no_favicon": "缺失 Favicon", "no_favicon_desc": "No Favicon icon was detected on the homepage.", "no_favicon_impact": "降低品牌在浏览器标签页和搜索结果页 (SERP) 中的辨识度，进而导致点击率 (CTR) 下降。", "no_favicon_sugg": "制作一个 .ico 或 .png 格式的图标，并在 <head> 中通过 <link rel='icon'> 引用。",
         "duplicate": "发现未规范化的重复内容", "duplicate_desc": "检测到高度相似的内容页面，且未正确配置 Canonical 标签。", "duplicate_impact": "导致关键词内部竞争 (Cannibalization)，分散页面权重，使所有相关页面都难以获得高排名。", "duplicate_sugg": "保留一个首选 URL，并在其他副本页面上添加 rel='canonical' 指向该首选 URL。",
         "http_3xx": "内部链接重定向 (3xx)", "http_3xx_desc": "内部链接发生跳转 (链条: {})。", "http_3xx_impact": "浪费爬虫预算，增加页面加载延迟，且每次跳转都会损耗少量链接传递的权重 (Link Equity)。", "http_3xx_sugg": "批量更新内部链接，使其直接指向最终的目标 URL，避免中间跳转。",
         "http_4xx": "死链/客户端错误 (4xx)", "http_4xx_desc": "内部链接返回 404 (未找到) 或 403 (禁止访问) 错误。", "http_4xx_impact": "严重破坏用户体验，中断权重传递路径，并可能导致已索引的页面被 Google 移除。", "http_4xx_sugg": "移除死链，或者将其重定向到最相关的有效页面。",
         "http_5xx": "服务器错误 (5xx)", "http_5xx_desc": "服务器响应 500/502/503 等内部错误。", "http_5xx_impact": "表明服务器极其不稳定，Googlebot 会因此降低对该站点的爬取频率以减轻负载。", "http_5xx_sugg": "检查服务器错误日志，优化数据库查询或升级服务器配置。",
         "hreflang_invalid": "Hreflang 格式错误", "hreflang_invalid_desc": "语言代码不符合 ISO 639-1 标准 (如使用了 {} 等错误格式)。", "hreflang_invalid_impact": "Google 无法识别目标语言，导致国际化定位失效。", "hreflang_invalid_sugg": "使用标准的 ISO 语言代码 (例如 'en-US' 而不是 'en_US')。",
-        "hreflang_no_default": "Hreflang 缺失 x-default", "hreflang_no_default_desc": "未配置 'x-default' 回退版本。", "hreflang_no_default_impact": "当用户来自未指定的语言/地区时，可能无法自动匹配到最合适的通用版本（通常是英语）。", "hreflang_no_default_sugg": "添加 hreflang='x-default' 标签，指定默认的语言版本。",
+        "hreflang_no_default": "Hreflang 缺失 x-default", "hreflang_no_default_desc": "Missing 'x-default' fallback attribute.", "hreflang_no_default_impact": "当用户来自未指定的语言/地区时，可能无法自动匹配到最合适的通用版本（通常是英语）。", "hreflang_no_default_sugg": "添加 hreflang='x-default' 标签，指定默认的语言版本。",
         "alt_bad_quality": "图片 Alt 质量差", "alt_bad_quality_desc": "Alt 文本使用了无意义词汇（如 image1.jpg, photo）或过短。", "alt_bad_quality_impact": "搜索引擎无法理解图片内容，错失图片搜索流量，且对视障用户极不友好。", "alt_bad_quality_sugg": "使用描述性文本准确描述图片内容，包含相关的关键词。",
         "anchor_bad_quality": "锚文本质量差", "anchor_bad_quality_desc": "使用了“点击这里”、“更多”等通用词汇作为链接文本。", "anchor_bad_quality_impact": "无法向搜索引擎传递目标页面的关键词相关性，降低了目标页面的排名潜力。", "anchor_bad_quality_sugg": "使用描述性 keywords in the anchor text.",
         "cls_risk": "CLS 布局偏移风险 (静态检测)", "cls_risk_desc": "检测到 <img> 标签缺失 width 或 height 属性。", "cls_risk_impact": "图片加载时会撑开页面，导致布局发生意外抖动，直接恶化 CLS 指标。", "cls_risk_sugg": "在 HTML 中显式指定图片和视频的宽度和高度属性。",
@@ -238,46 +238,48 @@ TRANSLATIONS = {
         "js_links": "发现 JS 伪链接", "js_links_desc": "使用了 href='javascript:...' 形式的链接。", "js_links_impact": "爬虫无法跟踪此类链接，导致内部链接断裂，深层页面变成“孤岛”。", "js_links_sugg": "使用标准的 <a href> 标签，仅在 onclick 事件中处理 JS 逻辑。",
         "url_underscore": "URL 包含下划线", "url_underscore_desc": "URL 路径中使用下划线 (_) 分隔单词。", "url_underscore_impact": "Google 建议使用连字符。下划线可能导致关键词无法被正确切分（被视为一个长单词）。", "url_underscore_sugg": "在 URL 结构中使用连字符 (-) 代替下划线。",
         "url_uppercase": "URL 包含大写字母", "url_uppercase_desc": "URL 路径中混用了大写字母。", "url_uppercase_impact": "服务器通常区分大小写，极易造成一页多址（Duplicate Content）和 404 错误。", "url_uppercase_sugg": "强制所有 URL 使用小写字母。",
-        "missing_keywords": "缺失 Meta Keywords (百度专用)",
-        "missing_keywords_desc": "页面未包含 <meta name='keywords'> 标签。",
-        "missing_keywords_impact": "虽然 Google 已忽略此标签，但百度仍将其作为相关性信号之一。",
-        "missing_keywords_sugg": "添加包含 3-5 个核心关键词的 meta keywords 标签。",
-        "missing_baidu_stats": "缺失百度统计代码",
-        "missing_baidu_stats_desc": "页面代码中未发现 'hm.baidu.com' 相关脚本。",
-        "missing_baidu_stats_impact": "无法准确追踪来自百度的自然搜索流量和用户行为。",
-        "missing_baidu_stats_sugg": "安装百度统计 (Baidu Tongji) 代码。",
-        "missing_baidu_verify": "缺失百度站长验证",
-        "missing_baidu_verify_desc": "未检测到 'baidu-site-verification' 标签。",
-        "missing_baidu_verify_impact": "可能影响新站收录速度和站长平台数据获取。",
-        "missing_baidu_verify_sugg": "在 HTML 头部添加百度验证标签。",
-        "baidu_robots_missing": "Robots.txt 缺少百度规则",
-        "baidu_robots_missing_desc": "未发现针对 'Baiduspider' 的专门 User-agent 指令。",
-        "baidu_robots_missing_impact": "百度爬虫可能抓取效率低下或抓取无用页面，浪费服务器资源。",
-        "baidu_robots_missing_sugg": "添加 'User-agent: Baiduspider' 并配置合理的 Disallow 规则。",
-        "missing_applicable_device": "缺失移动适配标签 (百度)",
-        "missing_applicable_device_desc": "未检测到 'applicable-device' meta 标签。",
-        "missing_applicable_device_impact": "百度无法准确识别页面适配的设备类型（PC/移动），影响移动端排名。",
-        "missing_applicable_device_sugg": "添加 <meta name='applicable-device' content='pc,mobile'>。",
-        "missing_no_transform": "缺失转码控制标签 (百度)",
-        "missing_no_transform_desc": "未检测到 'Cache-Control: no-transform'。",
-        "missing_no_transform_impact": "百度可能会对页面进行强制转码，破坏页面原有的布局和广告。",
-        "missing_no_transform_sugg": "添加 <meta http-equiv='Cache-Control' content='no-transform'>.",
-        "missing_icp": "缺失 ICP 备案号",
-        "missing_icp_desc": "页面源代码中未检测到 ICP 备案号 (如 '京ICP备')。",
-        "missing_icp_impact": "根据中国法律，境内托管网站必须在页面底部公示 ICP 备案号，否则可能被关停或降权。",
-        "missing_icp_sugg": "在页脚添加工信部 ICP 备案号并链接至 beian.miit.gov.cn。",
-        "content_not_chinese": "页面中文内容占比过低",
-        "content_not_chinese_desc": "检测到页面中文字符占比低于 5%。",
-        "content_not_chinese_impact": "百度优先收录中文内容。非中文页面在百度中文搜索中的排名能力极弱。",
-        "content_not_chinese_sugg": "确保目标页面的核心内容为简体中文。",
-        "server_not_in_china": "服务器不在中国大陆 (百度建议)",
-        "server_not_in_china_desc": "检测到服务器 IP 位于：{}。百度优先收录和排名中国大陆服务器的网站。",
-        "server_not_in_china_impact": "跨境加载速度慢，极易导致百度爬虫抓取超时或放弃，严重影响排名。",
-        "server_not_in_china_sugg": "建议将服务器迁移至中国大陆，并完成 ICP 备案。"
+        
+        # Baidu specific
+        "missing_keywords": "Missing Meta Keywords (Baidu)",
+        "missing_keywords_desc": "No <meta name='keywords'> tag found.",
+        "missing_keywords_impact": "Baidu still uses keywords as a ranking signal, unlike Google.",
+        "missing_keywords_sugg": "Add meta keywords tag with 3-5 relevant keywords.",
+        "missing_baidu_stats": "Missing Baidu Analytics",
+        "missing_baidu_stats_desc": "Baidu Tongji script (hm.baidu.com) not found.",
+        "missing_baidu_stats_impact": "Unable to track Baidu traffic effectively.",
+        "missing_baidu_stats_sugg": "Install Baidu Tongji script.",
+        "missing_baidu_verify": "Missing Baidu Verification",
+        "missing_baidu_verify_desc": "No 'baidu-site-verification' tag found.",
+        "missing_baidu_verify_impact": "May delay site indexing on Baidu.",
+        "missing_baidu_verify_sugg": "Add verification tag.",
+        "baidu_robots_missing": "Missing Baidu Rules",
+        "baidu_robots_missing_desc": "No specific rules for 'Baiduspider' in Robots.txt.",
+        "baidu_robots_missing_impact": "Inefficient crawling by Baidu.",
+        "baidu_robots_missing_sugg": "Add User-agent: Baiduspider directives.",
+        "missing_applicable_device": "Missing Applicable Device (Baidu)",
+        "missing_applicable_device_desc": "Meta tag 'applicable-device' not found.",
+        "missing_applicable_device_impact": "Baidu can't identify if page is PC/Mobile adapted.",
+        "missing_applicable_device_sugg": "Add <meta name='applicable-device' content='pc,mobile'>.",
+        "missing_no_transform": "Missing No-transform (Baidu)",
+        "missing_no_transform_desc": "Cache-Control: no-transform not found.",
+        "missing_no_transform_impact": "Baidu might transcode your page (Siteapp), breaking layout.",
+        "missing_no_transform_sugg": "Add <meta http-equiv='Cache-Control' content='no-transform'>.",
+        "missing_icp": "Missing ICP Number",
+        "missing_icp_desc": "No ICP filing number found in page content.",
+        "missing_icp_impact": "Required by Chinese law for mainland hosting; affects trust and Baidu ranking.",
+        "missing_icp_sugg": "Add ICP number in footer linking to beian.miit.gov.cn.",
+        "content_not_chinese": "Low Chinese Content Ratio",
+        "content_not_chinese_desc": "Chinese character ratio is below 5%.",
+        "content_not_chinese_impact": "Baidu prioritizes Chinese content. Low ratio affects ranking in CN search.",
+        "content_not_chinese_sugg": "Ensure main content is in Simplified Chinese.",
+        "server_not_in_china": "Server Not In China (Baidu)",
+        "server_not_in_china_desc": "Server IP detected in: {}. Baidu prefers mainland China hosting.",
+        "server_not_in_china_impact": "Slow cross-border loading may cause Baidu spider timeouts.",
+        "server_not_in_china_sugg": "Migrate hosting to Mainland China and get ICP filing."
     },
     "en": {
         "sidebar_title": "🔍 AuditAI Pro",
-        "sidebar_caption": "Deep Audit Edition v14.4",
+        "sidebar_caption": "Deep Audit Edition v14.2",
         "nav_label": "Navigation",
         "nav_options": ["Input URL", "Dashboard", "Data Matrix", "PPT Generator"],
         "lang_label": "Language / 语言",
@@ -300,7 +302,7 @@ TRANSLATIONS = {
         "psi_error": "API Failed or No CrUX Data",
         
         "input_header": "Start Deep Audit",
-        "input_info": "Note: v14.4 features fixed indentation and Baidu SEO checks.",
+        "input_info": "Note: v14.2 features Manual URL input.",
         "input_label": "Target URL",
         "input_placeholder": "https://example.com",
         "max_pages_label": "Max Pages to Crawl",
@@ -624,8 +626,6 @@ def check_cwv_issues(cwv_data, url, label=""):
     if not cwv_data or "error" in cwv_data: return issues
     category_key = "cwv_performance"
     
-    # Thresholds
-    # LCP: Good < 2.5, Poor > 4.0
     lcp = cwv_data.get("LCP", 0)
     if lcp > 2.5:
         issues.append({
@@ -633,7 +633,6 @@ def check_cwv_issues(cwv_data, url, label=""):
             "url": url, "args": [lcp], "examples": [f"{url} ({lcp:.2f}s) {label}"] 
         })
     
-    # INP: Good < 200, Poor > 500
     inp = cwv_data.get("INP", 0)
     if inp > 200:
         issues.append({
@@ -641,7 +640,6 @@ def check_cwv_issues(cwv_data, url, label=""):
             "url": url, "args": [inp], "examples": [f"{url} ({inp}ms) {label}"]
         })
 
-    # CLS: Good < 0.1, Poor > 0.25
     cls = cwv_data.get("CLS", 0)
     if cls > 0.1:
         issues.append({
@@ -739,29 +737,20 @@ def analyze_page(url, content, status, sitemap_has_hreflang, baidu_mode=False):
     soup = BeautifulSoup(content, 'html.parser')
     issues = []
     
-    # Content
     title = soup.title.string.strip() if soup.title else None
-    
-    # Get Description
     desc = soup.find('meta', attrs={'name': 'description'})
     desc_content = desc['content'].strip() if desc else None
-
-    # Get H1
     h1 = soup.find('h1')
     h1_content = h1.get_text().strip() if h1 else None
     
-    # Get Canonical (Early extraction for logic)
     can_tag = soup.find('link', attrs={'rel': 'canonical'})
     can_url = can_tag['href'] if can_tag else None
 
-    # ONLY check content/technical issues for status 200
     if status == 200:
-        # --- LOGIC: Canonical Check ---
         is_self_canonical = True
         if can_url:
             def norm_u(u): return u.split('#')[0].rstrip('/')
             try:
-                # Resolve relative canonicals
                 abs_can = urljoin(url, can_url)
                 if norm_u(abs_can) != norm_u(url):
                     is_self_canonical = False
@@ -769,9 +758,8 @@ def analyze_page(url, content, status, sitemap_has_hreflang, baidu_mode=False):
 
         if not can_url:
             issues.append({"id": "missing_canonical", "category": "indexability", "severity": "Medium", "url": url})
-            is_self_canonical = True # Treat as self-canonical for auditing
+            is_self_canonical = True
 
-        # Hreflang (Independent of canonical)
         hreflangs = soup.find_all('link', hreflang=True)
         if hreflangs:
             has_x_default = False
@@ -782,7 +770,6 @@ def analyze_page(url, content, status, sitemap_has_hreflang, baidu_mode=False):
                 if code.lower() == 'x-default': has_x_default = True
                 if not pat.match(code): invalid.append(code)
             if invalid:
-                # Pass invalid code for visualization
                 issues.append({"id": "hreflang_invalid", "category": "indexability", "severity": "High", "url": url, "args": [", ".join(invalid[:3])]})
             if not has_x_default:
                 issues.append({"id": "hreflang_no_default", "category": "indexability", "severity": "Low", "url": url})
@@ -790,9 +777,7 @@ def analyze_page(url, content, status, sitemap_has_hreflang, baidu_mode=False):
              if is_self_canonical:
                 issues.append({"id": "missing_hreflang", "category": "indexability", "severity": "Low", "url": url})
 
-        # --- CONTENT & TECHNICAL CHECKS (Only for Self-Canonical Pages) ---
         if is_self_canonical:
-            # Technical
             if not soup.find('meta', attrs={'name': 'viewport'}):
                 issues.append({"id": "missing_viewport", "category": "technical", "severity": "Critical", "url": url})
             
@@ -804,15 +789,12 @@ def analyze_page(url, content, status, sitemap_has_hreflang, baidu_mode=False):
                  elif any(x in path for x in ["blog", "news"]): rec = "Article"
                  issues.append({"id": "missing_jsonld", "category": "technical", "severity": "Medium", "url": url, "args": [rec]})
 
-            # URL
             if '_' in url: issues.append({"id": "url_underscore", "category": "technical", "severity": "Low", "url": url})
             if any(c.isupper() for c in urlparse(url).path): issues.append({"id": "url_uppercase", "category": "technical", "severity": "Medium", "url": url})
             
-            # Access (JS Links - harmful regardless)
             if soup.find('a', href=lambda x: x and x.lower().startswith('javascript:')):
                 issues.append({"id": "js_links", "category": "access", "severity": "High", "url": url}) 
 
-            # Image UX & Static Performance
             imgs = soup.find_all('img')
             missing_alt = 0
             bad_alt = 0
@@ -827,13 +809,11 @@ def analyze_page(url, content, status, sitemap_has_hreflang, baidu_mode=False):
             if bad_alt > 0: issues.append({"id": "alt_bad_quality", "category": "image_ux", "severity": "Low", "url": url})
             if cls_risk > 0: issues.append({"id": "cls_risk", "category": "cwv_performance", "severity": "Medium", "url": url})
 
-            # Anchor Quality
             links = soup.find_all('a', href=True)
             bad_anchors = ["click here", "read more", "more"]
             if any(a.get_text().strip().lower() in bad_anchors for a in links):
                 issues.append({"id": "anchor_bad_quality", "category": "access", "severity": "Low", "url": url})
             
-            # --- Pixel-based Title Check ---
             if not title: 
                 issues.append({"id": "missing_title", "category": "content", "severity": "High", "url": url})
             else:
@@ -843,7 +823,6 @@ def analyze_page(url, content, status, sitemap_has_hreflang, baidu_mode=False):
                 elif px_w > 600:
                     issues.append({"id": "long_title", "category": "content", "severity": "Low", "url": url, "evidence": title, "args": [int(px_w)]})
 
-            # --- Pixel-based Desc Check ---
             if not desc_content: 
                 issues.append({"id": "missing_desc", "category": "content", "severity": "High", "url": url})
             else:
@@ -853,26 +832,20 @@ def analyze_page(url, content, status, sitemap_has_hreflang, baidu_mode=False):
 
             if not h1_content: issues.append({"id": "missing_h1", "category": "content", "severity": "High", "url": url})
 
-            # Soft 404 Check
             if (title and "not found" in title.lower()) or (soup.find('h1') and "not found" in soup.find('h1').get_text().lower()):
                 issues.append({"id": "soft_404", "category": "access", "severity": "Critical", "url": url})
         
-        # --- Baidu Mode Checks ---
         if baidu_mode:
-            # Check Meta Keywords
             keywords = soup.find('meta', attrs={'name': 'keywords'})
             if not keywords or not keywords.get('content', '').strip():
                  issues.append({"id": "missing_keywords", "category": "content", "severity": "Medium", "url": url})
             
-            # Check Baidu Tongji
             if "hm.baidu.com" not in str(soup):
                  issues.append({"id": "missing_baidu_stats", "category": "technical", "severity": "Low", "url": url})
             
-            # Baidu specific meta tags check
             if not soup.find('meta', attrs={'name': 'applicable-device'}):
                  issues.append({"id": "missing_applicable_device", "category": "technical", "severity": "Medium", "url": url})
             
-            # Check for no-transform
             has_no_transform = False
             for meta in soup.find_all('meta'):
                 if meta.get('http-equiv', '').lower() == 'cache-control' and 'no-transform' in meta.get('content', '').lower():
@@ -881,13 +854,10 @@ def analyze_page(url, content, status, sitemap_has_hreflang, baidu_mode=False):
             if not has_no_transform:
                  issues.append({"id": "missing_no_transform", "category": "technical", "severity": "Medium", "url": url})
             
-            # ICP Check
             page_text = soup.get_text()
             if "ICP备" not in page_text and "ICP证" not in page_text:
                  issues.append({"id": "missing_icp", "category": "technical", "severity": "High", "url": url})
             
-            # Chinese Content Check
-            # Count Chinese chars
             chinese_chars = len(re.findall(r'[\u4e00-\u9fa5]', page_text))
             total_chars = len(page_text.strip())
             if total_chars > 200 and (chinese_chars / total_chars) < 0.05:
@@ -909,7 +879,6 @@ def crawl_website(start_url, max_pages, lang, manual_robots, manual_sitemaps, ps
     seen_hashes = {} 
     seen_urls = set()
     
-    # Priority Queue
     queue = [start_url]
     seen_urls.add(start_url)
     if list_url and is_valid_url(list_url):
@@ -939,7 +908,6 @@ def crawl_website(start_url, max_pages, lang, manual_robots, manual_sitemaps, ps
     progress_bar = st.progress(0, text="Initializing...")
     sitemap_has_hreflang = False
     
-    # 1. Site Checks
     try:
         site_issues, sitemap_has_hreflang = check_site_level_assets(
             start_url, lang, check_robots, crawl_sitemap, manual_sitemaps, baidu_mode
@@ -949,7 +917,6 @@ def crawl_website(start_url, max_pages, lang, manual_robots, manual_sitemaps, ps
     except Exception as e:
         pass
 
-    # 2. CWV (Batch)
     if psi_key:
         with st.spinner(TRANSLATIONS[lang]["psi_fetching"].format("Pages")):
             targets = [("Home", start_url)]
@@ -962,16 +929,13 @@ def crawl_website(start_url, max_pages, lang, manual_robots, manual_sitemaps, ps
                     if label == "Home": st.session_state['cwv_data'] = cwv_data
                     all_issues.extend(check_cwv_issues(cwv_data, t_url, label=f"({label})"))
 
-    # 3. Crawl
     count = 0
     headers = get_browser_headers()
     
-    # --- START CRAWL LOOP ---
     while queue and count < max_pages:
         url = queue.pop(0)
         visited.add(url)
         
-        # Skip Login/Admin Pages
         if any(x in url.lower() for x in ['/login', '/signin', '/admin', '/cart', '/account']):
             continue
 
@@ -980,23 +944,16 @@ def crawl_website(start_url, max_pages, lang, manual_robots, manual_sitemaps, ps
         time.sleep(0.1)
         
         try:
-            # Request
             response = requests.get(url, headers=headers, timeout=10, allow_redirects=True, verify=False)
             current_url = response.url 
             
-            # **DYNAMIC DOMAIN CALIBRATION**
             if count == 1 and url == start_url:
                  start_netloc = urlparse(current_url).netloc.replace('www.', '')
 
             final_status = response.status_code
 
-            # 1. 3xx Chain Logging
             if response.history:
-                # Store full chain for visualization parsing
                 chain_list = [r.url for r in response.history] + [current_url]
-                
-                # Format Chain with Full Path logic
-                # Calculate Origin
                 origin_netloc = urlparse(chain_list[0]).netloc.replace('www.', '')
                 chain_display_parts = []
                 for u in chain_list:
@@ -1013,7 +970,6 @@ def crawl_website(start_url, max_pages, lang, manual_robots, manual_sitemaps, ps
                 chain_str = " -> ".join(chain_display_parts)
                 all_issues.append({"id": "http_3xx", "category": "access", "severity": "Medium", "url": url, "args": [chain_str]})
 
-            # 2. 4xx/5xx
             if final_status >= 400:
                 is_5xx = final_status >= 500
                 all_issues.append({"id": "http_5xx" if is_5xx else "http_4xx", "category": "access", "severity": "Critical" if is_5xx else "High", "url": url, "args": [str(final_status)]})
@@ -1739,18 +1695,51 @@ elif menu_key == "ppt":
                 if "3xx" in s['id'] and s.get('args'): ev = s['args'][0]
 
                 if is_code:
-                    draw_code_preview(slide, txt, lang)
+                    st.code('<link rel="alternate" ... />' if "hreflang" in s['id'] else '<a href="javascript:...">', language="html")
                 elif is_hreflang:
                     type_str = s['id']
                     if "invalid" in type_str and s.get('args'):
                         type_str = f"invalid: {s['args'][0]}"
-                    draw_hreflang_preview(slide, ex_url, type_str, txt, lang)
+                    st.code(f'<link rel="alternate" hreflang="{type_str}" href="..." />', language="html")
                 elif is_rich:
-                    draw_rich_snippet_preview(slide, ex_url, txt, lang)
+                    st.markdown(f"**{ui.get('rich_sim_title', 'Rich Result Preview')}**")
+                    st.markdown("""
+                     <div style="font-family: Arial, sans-serif; border: 1px solid #dfe1e5; border-radius: 8px; padding: 15px; background: white; box-shadow: 0 1px 6px rgba(32,33,36,0.28);">
+                        <div style="font-size: 14px; color: #202124;">example.com <span style="color: #5f6368">› product</span></div>
+                        <div style="font-size: 20px; color: #1a0dab; margin-top: 5px;">Best Product - High Quality</div>
+                        <div style="color: #e7711b; font-size: 14px;">★★★★★ <span style="color:#70757a">Rating: 4.8 · $199.00 · In stock</span></div>
+                        <div style="font-size: 14px; color: #4d5156; margin-top: 3px;">This is a rich result enabled by Schema...</div>
+                     </div>
+                     """, unsafe_allow_html=True)
                 elif is_serp:
-                    draw_serp_preview(slide, s['id'], t_data['title'], ev, ex_url, txt, lang)
+                    st.markdown(f"**{ui.get('serp_sim_title', 'SERP Preview')}**")
+                    display_title = ev if ev else "Untitled Page"
+                    if len(display_title) > 60: display_title = display_title[:55] + " ..."
+                    st.markdown(f"""
+                    <div style="font-family: Arial, sans-serif; border: 1px solid #dfe1e5; border-radius: 8px; padding: 15px; background: white; box-shadow: 0 1px 6px rgba(32,33,36,0.28);">
+                        <div style="font-size: 14px; color: #202124;">{urlparse(ex_url).netloc} <span style="color: #5f6368">› ...</span></div>
+                        <div style="font-size: 20px; color: #1a0dab; margin-top: 5px;">{display_title}</div>
+                        <div style="font-size: 14px; color: #4d5156; margin-top: 3px;">
+                            Please provide a meta description...
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                elif is_cwv or is_img or is_3xx:
+                    st.warning(f"See PPT for full visual simulation of {t_data['title']}")
+                
+                st.markdown(f"**{ui['ppt_examples']}**")
+                for ex in s['examples']:
+                     if "Duplicate Group:" in ex:
+                         parts = ex.split("\n")
+                         st.markdown(f"- **Group:**\n  - `{parts[1].replace('- ', '').strip()}`\n  - `{parts[2].replace('- ', '').strip()}`")
+                     else:
+                         st.markdown(f"- `{ex}`")
 
-    out = BytesIO()
-    prs.save(out)
-    out.seek(0)
-    return out
+        c1, c2, c3 = st.columns([1, 2, 1])
+        if c1.button(ui["ppt_prev"]): 
+            st.session_state.slide_index = max(0, st.session_state.slide_index-1)
+            st.rerun()
+        c2.markdown(f"<div style='text-align: center'>Slide {st.session_state.slide_index+1} / {len(slides)}</div>", unsafe_allow_html=True)
+        if c3.button(ui["ppt_next"]):
+            st.session_state.slide_index = min(len(slides)-1, st.session_state.slide_index+1)
+            st.rerun()
