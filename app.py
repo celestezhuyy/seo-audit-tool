@@ -117,7 +117,7 @@ def get_issue_priority(issue_id):
 TRANSLATIONS = {
     "zh": {
         "sidebar_title": "🔍 AuditAI Pro",
-        "sidebar_caption": "旗舰审计版 v15.3 (Fixed)",
+        "sidebar_caption": "旗舰审计版 v15.3",
         "nav_label": "功能导航",
         "nav_options": ["输入网址", "仪表盘", "数据矩阵", "PPT 生成器"],
         "lang_label": "语言 / Language",
